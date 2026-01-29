@@ -1,0 +1,1705 @@
+openapi: 3.0.3
+info:
+  title: Timelines Public API
+  description: "# Timelines Public API\n\n_Some API calls may utilize message sending\
+    \ quota or be subject to message sending rate limits as described below._\n\n\
+    ### Credit Utilization \n  - Sending a message via API consumes 1 credit from\
+    \ message sending quota.\n  - Sending a message with non-empty text and attachment\
+    \ consumes 2 credits from message sending quota.\n  - If a message cannot be sent\
+    \ (invalid or not connected to WhatsApp number, WhatsApp server error), message\
+    \ sending quota will be restored (usually within a couple of hours).\n### Message\
+    \ sending rate\n  - Messages will be sent with random delay of about 2 seconds\
+    \ between each two messages (to avoid WhatsApp spam detection mechanisms). Contact\
+    \ support@timelines.ai if you want to modify delay for your workspace (available\
+    \ on Business plan only).\n  - If you exceed message sending frequency, messages\
+    \ be queued and sent out with delay. Each queued message will consume a message\
+    \ sending credit, so the number of queued messages cannot exceed the available\
+    \ quota.\n  \n### Authorization:\n  - Copy API token from [Public API page](https://app.timelines.ai/integrations/api/)\
+    \ in your TimelinesAI account.\n  - Put the token in *Authorization* header of\
+    \ request as follows:\n  ```\n  Authorization: Bearer 4d2d0239-e28c-4f4a-8a4d-3a3ca40056b8\n\
+    \  ```\n        \n### Message formatting:\n  - use \"\\n\" for line breaks\n"
+  version: 1.3.0
+servers:
+- url: http://localhost:8000/integrations/api
+  description: Public API root URL
+
+# common responses for all endpoints
+x-common-errors: &http_errors_common
+  '400':
+    $ref: '#/components/responses/BadRequestError'
+  '401':
+    $ref: '#/components/responses/UnauthorizedError'
+  '403':
+    $ref: '#/components/responses/AccessDenied'
+  '404':
+    $ref: '#/components/responses/NotFound'
+
+paths:
+  /chats:
+    get:
+      summary: Get full or filtered list of all chats in the Workspace.
+      description: Leave filtering parameters empty to get the unfiltered list. When
+        multiple filtering parameters are specified, logical AND operation is applied.
+        The result is paginated, page size is 50 records. The result is ordered first
+        by the timestamp of the most recent message in a chat (descending), then by
+        the name of the chat (alphabetically, ascending).
+      parameters:
+      - in: query
+        name: label
+        schema:
+          type: string
+        description: filters chats having at least one of specified labels (comma-separated)
+        example: customer1,customer2,customer3
+      - in: query
+        name: whatsapp_account_id
+        schema:
+          type: string
+        description: filters chats belonging to one of the specified WhatsApp accounts
+          (in wid format, comma-separated)
+        example: 972501111111@s.whatsapp.net,972502222222@s.whatsapp.net
+      - in: query
+        name: group
+        schema:
+          type: boolean
+        description: filters chats that are either group chats (true) or direct chats (false)
+      - in: query
+        name: responsible
+        schema:
+          type: string
+        description: filters chats assigned to specific users (denoted by email address,
+          comma-separated)
+        example: john.doe@acme.com,anna.smith@acme.com
+      - in: query
+        name: name
+        schema:
+          type: string
+        description: 'filter chats that contain any of specified strings (case-insensitive,
+          comma-separated). Note: a string containing a whitespace will be matched
+          as exact substring without being split to words.'
+        example: acme sales,contacts
+      - in: query
+        name: phone
+        schema:
+          type: string
+        description: Filter direct (non-group) chats by a single phone number.
+          Phone is sanitized in the same way as for sending messages.
+          If sanitized value starts with '+', the match is exact.
+          Otherwise, leading zeroes are removed and the number is matched as a substring of the stored phone.
+          Group chats are always excluded when this parameter is used.
+        example: "0501111111"
+      - in: query
+        name: read
+        schema:
+          type: boolean
+        description: filter chats that are either read (true) or unread (false)
+      - in: query
+        name: closed
+        schema:
+          type: boolean
+        description: filter chats that are either closed (true) or open (false)
+      - in: query
+        name: chatgpt_autoresponse_enabled
+        schema:
+          type: boolean
+        description: filter chats where chatgpt auto-response is enabled (true) or
+          disabled (false)
+      - in: query
+        name: page
+        schema:
+          type: integer
+        description: specify the page of results (each page contains up to 50 items),
+          starting with 1. Check \"has more page" response value to see if more pages
+          are available.
+        example: 1
+      - in: query
+        name: created_after
+        schema:
+          type: string
+          format: date-time
+        description: filter chats that were created after this timestamp, can be specified
+          with created_before
+        example: '2024-12-31T23:59:59Z'
+      - in: query
+        name: created_before
+        schema:
+          type: string
+          format: date-time
+        description: filter chats that were created before this timestamp, can be
+          specified with created_after
+        example: '2024-12-31T23:59:59Z'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatListResponse'
+        <<: *http_errors_common
+  /chats/{chat_id}:
+    get:
+      summary: Get details of a chat
+      description: ''
+      parameters:
+      - $ref: '#/components/parameters/chat_id'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatInfoResponse'
+        <<: *http_errors_common
+    patch:
+      summary: Update chat
+      description: Update chat's name, assign responsible (by email) or close / re-open
+      parameters:
+      - $ref: '#/components/parameters/chat_id'
+      requestBody:
+        description: ''
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatDetails'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatInfoResponse'
+        <<: *http_errors_common
+  /chats/{chat_id}/messages:
+    get:
+      summary: Get filtered chat history (messages only) of the chat
+      description: Leave filtering parameters empty to get the unfiltered list of
+        all messages in the specified chat. When multiple filtering parameters are
+        specified, logical AND operation is applied. The result is paginated, page
+        size is 50 records. The result is ordered the timestamp of messages (descending).
+      parameters:
+      - $ref: '#/components/parameters/chat_id'
+      - in: query
+        name: from_me
+        schema:
+          type: boolean
+        description: specify true to filter messages sent from my WhatsApp account
+          (from any session), false to filter messages received from other WhatsApp
+          users.
+        example: true
+      - in: query
+        name: after
+        schema:
+          type: string
+        description: can specify date or datetime in ISO format to filter out messages
+          created AFTER the specified date (inclusive)
+        example: 2024-01-17 10:35
+      - in: query
+        name: before
+        schema:
+          type: string
+        description: can specify date or datetime in ISO format to filter out messages
+          created BEFORE the specified date (inclusive)
+        example: 2024-01-19 15:30
+      - in: query
+        name: after_message
+        schema:
+          type: string
+        description: can specify message uid to filter out messages created after
+          the specified message (excluding the specified message itself)
+        example: d8cc5a02-b676-4956-8710-3ee56330f356
+      - in: query
+        name: before_message
+        schema:
+          type: string
+        description: can specify message uid to filter out messages created before
+          the specified message (excluding the specified message itself)
+        example: d8cc5a02-b676-4956-8710-3ee56330f356
+      - in: query
+        name: sorting_order
+        schema:
+          type: string
+          enum:
+            - asc
+            - desc
+        description: 'order messages by timestamp, according to possible values: asc, desc'
+        example: asc
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageListResponse'
+        <<: *http_errors_common
+    post:
+      summary: Send message in existing chat
+      description: Send message into existing WhatsApp chat (or group) specified by
+        chat_id. No need to specify WhatsApp Account, as each chat is already connected
+        to a specific WhatsApp account in the TimelinesAI workspace. A message may
+        contain a plaintext body or an attachment or both.
+      parameters:
+      - $ref: '#/components/parameters/chat_id'
+      requestBody:
+        description: A JSON describing recipient and message payload.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageWithReply'
+      responses:
+        '200':
+          description: Message accepted for async sending
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageSendResponse'
+        <<: *http_errors_common
+  /chats/{chat_id}/voice_message:
+    post:
+      summary: ''
+      description: Send voice note into existing WhatsApp chat (or group) specified
+        by chat_id. Oga / mp3 audio files can be used as attachment.
+      parameters:
+      - $ref: '#/components/parameters/chat_id'
+      requestBody:
+        description: The body of request in multipart/form-data format, containing
+          the audio file in 'ogg', 'oga', 'mp3' formats, to be sent as an audio message.
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/VoiceMessageUploadForm'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageSendResponse'
+        <<: *http_errors_common
+  /chats/{chat_id}/labels:
+    get:
+      summary: List labels for the specified chat.
+      description: ''
+      parameters:
+      - $ref: '#/components/parameters/chat_id'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabelsModifyResponse'
+        <<: *http_errors_common
+    post:
+      summary: Replaces labels for the chat.
+      description: ''
+      parameters:
+      - $ref: '#/components/parameters/chat_id'
+      requestBody:
+        description: ''
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LabelsList'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabelsModifyResponse'
+        <<: *http_errors_common
+    put:
+      summary: Adds labels for the chat.
+      description: ''
+      parameters:
+      - $ref: '#/components/parameters/chat_id'
+      requestBody:
+        description: ''
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LabelsList'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabelsModifyResponse'
+        <<: *http_errors_common
+  /chats/{chat_id}/notes:
+    post:
+      summary: Add a note to existing chat
+      description: ''
+      parameters:
+      - $ref: '#/components/parameters/chat_id'
+      requestBody:
+        description: Add a  note in existing WhatsApp chat (or group) specified by
+          chat_id.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NoteInfo'
+          text/plain:
+            schema:
+              type: string
+              description: Plain text content of the note
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteModifyResponse'
+        <<: *http_errors_common
+  /messages/{message_uid}:
+    get:
+      summary: Get the details of a message specified by the message's UID.
+      description: ''
+      parameters:
+      - $ref: '#/components/parameters/message_uid'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageInfoResponse'
+        <<: *http_errors_common
+  /messages/{message_uid}/status_history:
+    get:
+      summary: Get the sending history of a message, specified by the message's UID.
+      description: ''
+      parameters:
+      - $ref: '#/components/parameters/message_uid'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageStatusHistoryResponse'
+        <<: *http_errors_common
+  /messages/{message_uid}/reactions:
+    get:
+      summary: Get the current reactions map for a message.
+      description: ''
+      parameters:
+      - $ref: '#/components/parameters/message_uid'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageReactionsResponse'
+        <<: *http_errors_common
+    patch:
+        summary: Update reactions for a message.
+        description: Add or remove reactions for a message. To add a reaction, include
+            it in the "add" list. To remove a reaction, include it in the "remove" list.
+            Reactions are represented by their Unicode emoji characters.
+        parameters:
+        - $ref: '#/components/parameters/message_uid'
+        requestBody:
+            description: A JSON describing reactions to add or remove.
+            required: true
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/MessageReactionSetRequest'
+        responses:
+          '200':
+            description: Success
+            content:
+              application/json:
+                schema:
+                    $ref: '#/components/schemas/ReactionsSetResponse'
+          <<: *http_errors_common
+  /messages:
+    post:
+      summary: Send message to phone number
+      description: Send message to a WhatsApp phone number (doesn't require to have
+        previous chat or contact with the recipient). Optionally specify WhatsApp
+        Account to use for sending. If omitted, will use the most recently connected
+        WhatsApp account in the workspace. A message may contain a plaintext body
+        or an attachment or both.
+      requestBody:
+        description: A JSON describing recipient and message payload.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageToPhone'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageSendResponse'
+        <<: *http_errors_common
+  /messages/to_jid:
+    post:
+      summary: Send message to jid
+      description: Send message to WhatsApp chat (or group) specified by jid (doesn't
+        require to have previous chat or contact with the recipient). Optionally specify
+        WhatsApp Account to use for sending. If omitted, will use the most recently
+        connected WhatsApp account in the workspace. A message may contain a plaintext
+        body or an attachment or both.
+      requestBody:
+        description: A JSON describing recipient and message payload.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageToJID'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageSendResponse'
+        <<: *http_errors_common
+  /messages/to_chat_name:
+    post:
+      summary: Send message in existing chat, specified by chat name
+      description: 'Send message to existing WhatsApp chat (or group) specified by
+        its name in TimelinesAI. Chat names are guaranteed to be unique in TimelinesAI:
+        when several contacts from different WA accounts match, an index is automatically
+        appended to contact name at sync time. Optionally specify WhatsApp Account
+        to use for sending. If omitted, will use the most recently connected WhatsApp
+        account in the workspace. A message may contain a plaintext body or an attachment
+        or both.'
+      requestBody:
+        description: A JSON describing recipient and message payload.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageToChatName'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageSendResponse'
+        <<: *http_errors_common
+  /files:
+    get:
+      summary: List files uploaded in your TimelinesAI workspace
+      description: ''
+      parameters:
+      - $ref: '#/components/parameters/filename'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileListResponse'
+        <<: *http_errors_common
+    post:
+      summary: Upload a file using a publicly accessible URL.
+      description: Filename and mime-type will be automatically detected, but can
+        be overridden by optional parameters.
+      requestBody:
+        description: _
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FileUploadJson'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileInfoResponse'
+        <<: *http_errors_common
+  /files/{file_uid}:
+    get:
+      summary: Get details and temporary download URL for a specified uploaded file.
+      description: ''
+      parameters:
+      - $ref: '#/components/parameters/file_uid'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileInfoResponse'
+        <<: *http_errors_common
+    delete:
+      summary: Delete the specified uploaded file.
+      description: ''
+      parameters:
+      - $ref: '#/components/parameters/file_uid'
+      responses:
+        '200':
+          description: Success
+        <<: *http_errors_common
+  /files_upload:
+    post:
+      summary: Upload a file in x-form encoded HTTP request
+      description: ''
+      requestBody:
+        description: The body of request in multipart/form-data format, containing
+          the file content, file name and mime-type.
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FileUploadForm'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileInfoResponse'
+        <<: *http_errors_common
+  /whatsapp_accounts:
+    get:
+      summary: List WhatsApp accounts connected in your TimelinesAI workspace.
+      description: ''
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WhatsappAccountsResponse'
+        <<: *http_errors_common
+  /workspace/teammates:
+    get:
+      summary: List all teammates in the workspace.
+      description: ''
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceTeammatesResponse'
+        <<: *http_errors_common
+  /workspace/quotas:
+    get:
+      summary: All current quotas and utilization stats.
+      description: ''
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceQuotaInfoResponse'
+        <<: *http_errors_common
+  /webhooks:
+    get:
+      summary: List webhooks
+      description: Returns a list of webhook subscriptions for the current
+        workspace, ordered by **id** ascending.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookListResponse'
+        <<: *http_errors_common
+    post:
+      summary: Create webhook
+      description: 'Creates a new webhook subscription for a specified event. You can optionally include the enabled parameter to control whether the webhook is initially active or disabled. A full list of supported events is available at: [https://app.timelines.ai/integrations/webhooks_v2/swagger](https://app.timelines.ai/integrations/webhooks_v2/swagger)'
+      requestBody:
+        description: A JSON describing webhook.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Webhook'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookInfoResponse'
+        <<: *http_errors_common
+  /webhooks/{webhook_id}:
+    get:
+      summary: Get webhook
+      description: Retrieves the webhook subscription identified by **webhook_id**.
+      parameters:
+      - $ref: '#/components/parameters/webhook_id'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookInfoResponse'
+        <<: *http_errors_common
+    put:
+      summary: Update webhook
+      description: Updates fields of the webhook subscription identified by **webhook_id**.
+        Only properties supplied in the request body are changed.
+      parameters:
+      - $ref: '#/components/parameters/webhook_id'
+      requestBody:
+        description: A JSON describing webhook.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookUpdate'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookInfoResponse'
+        <<: *http_errors_common
+    delete:
+      summary: Delete webhook
+      description: Permanently deletes the webhook subscription identified by **webhook_id**.
+        Deliveries stop immediately.
+      parameters:
+      - $ref: '#/components/parameters/webhook_id'
+      responses:
+        '200':
+          description: Success
+        <<: *http_errors_common
+components:
+  parameters:
+    chat_id:
+      in: path
+      name: chat_id
+      schema:
+        type: integer
+      required: true
+      description: an id of the chat as appears in TimelinesAI (can be found in the
+        URL of the chat page, or in the payload of outbound webhook). _Supports sending
+        messages to a group._
+    message_uid:
+      in: path
+      name: message_uid
+      schema:
+        type: string
+      required: true
+      description: a UID of a message, that is unique for TimelinesAI workspace. Can
+        be used to lookup a message or its sending status.
+      example: a5bbb005-37f2-402c-96fa-e479a2e09b02
+    filename:
+      in: query
+      name: filename
+      schema:
+        type: string
+      required: false
+      description: a filename or any part of it (for example, extension), case insensitive
+        . Leave empty to get unfiltered list of all uploaded files.
+      example: png
+    file_uid:
+      description: A UID for an uploaded file, unique within the TimelinesAI workspace,
+        which can be used to reference the file in Public API methods for sending
+        messages with attachments.
+      in: path
+      name: file_uid
+      schema:
+        type: string
+      required: true
+      example: 90d353e6-44c1-48ff-b15b-69b7721e5450
+    webhook_id:
+      description: an ID of webhook
+      in: path
+      name: webhook_id
+      schema:
+        type: string
+      required: true
+      example: '7654321'
+  responses:
+    BadRequestError:
+      description: Invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    UnauthorizedError:
+      description: Access token is missing or invalid
+    AccessDenied:
+      description: Access denied
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Specified entities not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    ChatDetails:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Chat's name (must be unique in workspace)
+          example: John Doe
+        responsible:
+          type: string
+          description: Assign team member as responsible (specified by registration
+            email in TimelinesAI) or unassign a chat from responsible by supplying
+            an empty string ("").
+          example: john.doe@acme.com
+        closed:
+          type: boolean
+          description: Is the chart closed (true) or open (false)
+          example: false
+        read:
+          type: boolean
+          description: Is the chat read (true) or unread (false)
+          example: true
+        chatgpt_autoresponse_enabled:
+          type: boolean
+          description: Is the ChatGPT autoresponse enabled (true) or disabled (false)
+            for the chat
+          example: true
+    Message:
+      type: object
+      properties:
+        text:
+          type: string
+          description: plain text message
+          example: hello, world!
+        file_uid:
+          type: string
+          description: attachment UID
+          example: afa9d4dd-978d-4a14-aa1b-bd65c272e645
+        label:
+          type: string
+          description: assign label to the chat, in which the message is sent (create
+            new label, if not exists)
+          example: customer
+        chat_name:
+          type: string
+          description: an exact name of the chat (or group) as appears in TimelinesAI)
+          example: MyChat
+        attachment_template_id:
+          type: integer
+          description: a template ID of the attachment to be sent. The template must
+            be created in the workspace before sending a message with it.
+          example: 123456
+    MessageWithReply:
+      allOf:
+      - type: object
+        properties:
+          reply_to:
+            type: string
+            nullable: true
+            description: >
+              UID of the message this message replies to. Must reference a
+              message in the same workspace and WhatsApp account. Null or
+              empty string is ignored.
+      - $ref: '#/components/schemas/Message'
+    MessageToChatName:
+      allOf:
+      - type: object
+        required:
+        - chat_name
+        properties:
+          chat_name:
+            type: string
+            description: an exact name of the chat (or group) as appears in TimelinesAI
+            example: John Die
+      - $ref: '#/components/schemas/MessageWithReply'
+    MessageToJID:
+      allOf:
+      - type: object
+        required:
+        - jid
+        properties:
+          jid:
+            type: string
+            description: jid, WhatsApp ID of a contact or a group, a string structured
+              as 'x@s.whatsapp.net', where 'x' is the phone number of the contact.
+            example: 14840000000@s.whatsapp.net
+          whatsapp_account_phone:
+            type: string
+            description: the WhatsApp account (as a phone number, in international
+              format) to which the chat specified by JID belongs to. If omitted, the
+              most recently connected WhatsApp account in the workspace will be used.
+            example: '+14841111111'
+      - $ref: '#/components/schemas/MessageWithReply'
+    MessageToPhone:
+      allOf:
+      - type: object
+        required:
+        - phone
+        properties:
+          phone:
+            type: string
+            description: 'a phone number, formatted according to international phone
+              number standard, i.e.: [+][country code][area code][local phone number]'
+            example: '+14840000000'
+          whatsapp_account_phone:
+            type: string
+            description: the WhatsApp account (as a phone number, in international
+              format) to which the chat specified by JID belongs to. If omitted, the
+              most recently connected WhatsApp account in the workspace will be used.
+            example: '+14841111111'
+      - $ref: '#/components/schemas/Message'
+    MessageReactionSetRequest:
+      type: object
+      required:
+      - reaction
+      properties:
+        reaction:
+          type: string
+          description: 'Empty string: clear caller’s reaction. A single emoji character. A Unicode escape sequence representing a single emoji (for example "\\uD83D\\uDC4D").'
+          example: '👍'
+    ChatInfo:
+      type: object
+      required:
+      - id
+      - name
+      - jid
+      - is_group
+      - closed
+      - read
+      - labels
+      - chatgpt_autoresponse_enabled
+      - whatsapp_account_id
+      - chat_url
+      - created_timestamp
+      - unattended
+      - photo
+      properties:
+        id:
+          example: '1000001'
+          type: integer
+        name:
+          example: John Doe
+          type: string
+        phone:
+          example: '+972501111111'
+          type: string
+        jid:
+          example: 14840000000@s.whatsapp.net
+          type: string
+        is_group:
+          example: false
+          type: boolean
+        closed:
+          example: false
+          type: boolean
+        read:
+          example: true
+          type: boolean
+        labels:
+          example:
+          - label1
+          - label2
+          - label3
+          type: array
+          items:
+            type: string
+        chatgpt_autoresponse_enabled:
+          example: true
+          type: boolean
+        responsible_email:
+          example: kate.smitch@acme.com
+          type: string
+        responsible_name:
+          example: Kate Smith
+          type: string
+        whatsapp_account_id:
+          example: 972502222222@s.whatsapp.net
+          type: string
+        chat_url:
+          example: https://app.timelines.ai/chat/1000001/messages/
+          type: string
+        created_timestamp:
+          example: 2024-01-08 10:35:18 +0200
+          type: string
+        last_message_uid:
+          example: 4f43a9a0-b87e-4667-adfd-689674c3326c
+          type: string
+        last_message_timestamp:
+          example: 2024-01-29 13:55:04 +0200
+          type: string
+        unattended:
+          example: false
+          type: boolean
+        photo:
+          example: https://acme.com/logo.png
+          type: string
+        group_members:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                example: John Doe
+              phone:
+                type: string
+                example: '+972502222222'
+              role:
+                type: string
+                example: admin
+              chat_id:
+                type: integer
+                example: 123456
+        is_allowed_to_message:
+          example: true
+          type: boolean
+    MessageInfo:
+      type: object
+      required:
+      - uid
+      - chat_id
+      - timestamp
+      - sender_phone
+      - sender_name
+      - recipient_phone
+      - recipient_name
+      - from_me
+      - status
+      - origin
+      - has_attachment
+      - message_type
+      - data
+      - created_by
+      properties:
+        uid:
+          type: string
+          example: de919486-0c93-409d-ae66-c2bbb544faca
+        chat_id:
+          example: '1000001'
+          type: integer
+        timestamp:
+          example: 2023-06-18 15:19:23 +0300
+          type: string
+        sender_phone:
+          example: '+972540000001'
+          type: string
+        sender_name:
+          example: John Doe
+          type: string
+        recipient_phone:
+          example: '+972540000002'
+          type: string
+        recipient_name:
+          example: Kate Smith
+          type: string
+        from_me:
+          example: true
+          type: boolean
+        text:
+          example: Hello, Kate👍
+          type: string
+        attachment_url:
+          example: https://acme.com/logo.png
+          type: string
+        attachment_filename:
+          example: logo.png
+          type: string
+        status:
+          example: Read
+          type: string
+        origin:
+          example: Public API
+          type: string
+        has_attachment:
+          example: true
+          type: boolean
+        message_type:
+          example: Note
+          type: string
+        reactions:
+          $ref: '#/components/schemas/MessageReactionsObject'
+        data:
+          example:
+            key1: value1
+            key2: value2
+          type: object
+        created_by:
+          example: Kate Smith
+          type: string
+    MessageStatusHistoryRecord:
+      type: object
+      required:
+      - status
+      - timestamp
+      properties:
+        status:
+          type: string
+        timestamp:
+          type: string
+    LabelsList:
+      type: object
+      required:
+      - labels
+      properties:
+        labels:
+          type: array
+          example:
+          - label1
+          - label2
+          - label3
+          items:
+            type: string
+    NoteInfo:
+      type: object
+      required:
+      - text
+      properties:
+        text:
+          type: string
+          description: plain text (will be displayed "as is", no additional processing
+            will be made)
+        is_private:
+          type: boolean
+          default: true
+          description: specify whether to set the note as public or private
+    MessageID:
+      type: object
+      required:
+      - message_uid
+      properties:
+        message_uid:
+          type: string
+    WhatsappAccountItem:
+      type: object
+      required:
+      - id
+      - phone
+      - connected_on
+      - status
+      - owner_name
+      - owner_email
+      - account_name
+      properties:
+        id:
+          example: 972501111111@s.whatsapp.net
+          type: string
+        phone:
+          example: '+972540000001'
+          type: string
+        connected_on:
+          example: 2023-06-18 15:19:23 +0300
+#          format: date-time
+          type: string
+        status:
+          example: Active
+          type: string
+        owner_name:
+          example: John Doe
+          type: string
+        owner_email:
+          example: john.doe@acme.com
+          type: string
+        account_name:
+          example: John Doe
+          type: string
+    WhatsappAccountItemV2:
+      allOf:
+        - $ref: '#/components/schemas/WhatsappAccountItem'
+        - type: object
+          properties:
+            is_visible:
+              example: true
+              type: boolean
+    WhatsappAccountsList:
+      type: object
+      required:
+      - whatsapp_accounts
+      properties:
+        whatsapp_accounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/WhatsappAccountItem'
+    WhatsappAccountsListV2:
+      type: object
+      required:
+      - whatsapp_accounts
+      properties:
+        whatsapp_accounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/WhatsappAccountItemV2'
+    WorkspaceTeammatesItem:
+      required:
+      - user_id
+      - display_name
+      - email
+      - status
+      - created_at
+      type: object
+      properties:
+        user_id:
+          type: integer
+          description: Unique identifier for the user
+          example: 42
+        display_name:
+          type: string
+          description: Display name of the user
+          example: John Doe
+        role:
+          type: string
+          description: Role of the user in the workspace
+          example: owner
+        email:
+          type: string
+          description: Email address of the user
+          example: admin@timelines.ai
+        status:
+          type: string
+          description: Status of the user
+          example: active
+        created_at:
+          type: string
+#          format: date-time  # we use self formated strings
+          description: Timestamp of user creation
+          example: '2022-01-01T10:00:00Z'
+        whatsapp_accounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/WhatsappAccountItem'
+    WorkspaceTeammatesList:
+      type: object
+      properties:
+        teammates:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkspaceTeammatesItem'
+# Quota info
+    Quota:
+      description: Workspace quota details
+      type: object
+      required:
+      - total
+      - used
+      properties:
+        total:
+          type: integer
+          description: Total number of seats in the workspace
+          example: 10
+        used:
+          type: integer
+          description: Number of used seats in the workspace
+          example: 7
+        period_start:
+          type: string
+          format: date-time
+          description: Start date of the quota period
+          example: '2024-01-01T00:00:00Z'
+        period_end:
+          type: string
+          format: date-time
+          description: End date of the quota period
+          example: '2024-12-31T23:59:59Z'
+    NonRecurringQuota:
+      description: Non-recurring quota information for a workspace. Represents an
+        additional, non-recurring balance (for example, one-off purchased message
+        packs) with the remaining_balance and the timestamp when it was last updated.
+      type: object
+      properties:
+        remaining_balance:
+          type: integer
+          description: Remaining balance of non-recurring quota
+          example: 50
+        last_updated_at:
+          type: string
+          format: date-time
+          description: Timestamp of the last recharge
+          example: '2024-01-10T12:00:00Z'
+    WorkspaceQuotaInfo:
+      type: object
+      required:
+        - messaging_quota
+        - api_calls_quota
+      properties:
+        seats:
+          $ref: '#/components/schemas/Quota'
+        messaging_quota:
+          $ref: '#/components/schemas/Quota'
+        api_calls_quota:
+          $ref: '#/components/schemas/Quota'
+        non_recurring_quota:
+          $ref: '#/components/schemas/NonRecurringQuota'
+# File manipulation responses
+    FileInfoShort:
+      type: object
+      required:
+      - uid
+      - filename
+      - size
+      - mimetype
+      - uploaded_by_email
+      - uploaded_at
+      properties:
+        uid:
+          description: a unique identifier of the uploaded file to be used with Public
+            API
+          example: 90d353e6-44c1-48ff-b15b-69b7721e5450
+          type: string
+        filename:
+          description: original filename of the uploaded file, including extension
+          example: somefile.png
+          type: string
+        size:
+          description: A file size, in bytes
+          example: 10000
+          type: integer
+        mimetype:
+          description: A mime-type of the uploaded file (to be used in content-type
+            or mime-type headers in calls to 3rd party APIs)
+          example: image/png
+          type: string
+        uploaded_by_email:
+          description: registration email of the user that uploaded the file (or \"(removed)\"
+            if the user is no longer part of the workspace
+          example: john.doe@acme.com
+          type: string
+        uploaded_at:
+          description: a timestamp in ISO format indicating the file's last upload
+            time
+          example: 2023-06-18 15:19:23 +0300
+          type: string
+    FileInfo:
+      allOf:
+      - type: object
+        required:
+        - temporary_download_url
+        properties:
+          temporary_download_url:
+            type: string
+            description: A temporary download URL, valid for 15 minutes.
+            example: http://acme.com/somefile.png
+      - $ref: '#/components/schemas/FileInfoShort'
+    FileInfoList:
+      type: array
+      items:
+        $ref: '#/components/schemas/FileInfoShort'
+    FileUploadJson:
+      type: object
+      required:
+      - download_url
+      properties:
+        download_url:
+          description: A publicly accessible URL for the file (excluding download
+            URLs from services like Google Drive or OneDrive).
+          example: https://acme.com/somefile.png
+          type: string
+        filename:
+          description: (optional) A filename, to be used instead of the original filename
+            specified by the download URL.
+          example: anotherfile.jpeg
+          type: string
+        content_type:
+          description: (optional) A mime-type of the file, to be used instead of the
+            original filename specified by the download URL.
+          example: image/jpeg
+          type: string
+    FileUploadForm:
+      type: object
+      required:
+      - file
+      properties:
+        file:
+          description: A file content in binary format.
+          type: string
+          format: binary
+        filename:
+          description: A filename.
+          example: somefile.jpeg
+          type: string
+        content_type:
+          description: A mime-type of the file.
+          type: string
+    VoiceMessageUploadForm:
+      type: object
+      required:
+      - file
+      properties:
+        file:
+          description: A file content in binary format.
+          type: string
+          format: binary
+    Webhook:
+      type: object
+      required:
+      - event_type
+      - url
+      properties:
+        event_type:
+          example: message:sent:new
+          type: string
+          description: 'Event topic that will trigger the webhook. For the current
+            list of supported values see TimelinesAI *Event Types* documentation at https://app.timelines.ai/integrations/webhooks_v2/swagger (for
+            example: `message:sent:new`, `message:received:new`).'
+        enabled:
+          example: true
+          type: boolean
+          description: Flag indicating whether the subscription is active. When **false**,
+            deliveries are paused but the definition is kept.
+        url:
+          example: http://www.example.com/api/hook
+          type: string
+          description: Destination HTTPS endpoint that TimelinesAI will call. Must
+            be publicly accessible and respond with `2xx` status within 5 seconds.
+      description: A client‑defined subscription that instructs TimelinesAI to send
+        an HTTP POST request to the specified **url** whenever the chosen **event_type**
+        occurs in the workspace. The POST body is delivered as JSON and contains the
+        event payload.
+    WebhookUpdate:
+      type: object
+      properties:
+        event_type:
+          example: message:sent:new
+          type: string
+          description: New event topic that will trigger the webhook.
+        enabled:
+          example: true
+          type: boolean
+          description: Set to **true** to resume deliveries or **false** to pause
+            them.
+        url:
+          example: http://www.example.com/api/hook
+          type: string
+          description: New destination HTTPS endpoint.
+      description: Partial representation used to update an existing webhook. Any
+        omitted field keeps its current value.
+    WebhookInfo:
+      type: object
+      required:
+      - id
+      - event_type
+      - enabled
+      - url
+      - errors_counter
+      properties:
+        id:
+          example: 789456
+          type: integer
+          description: Unique numeric identifier for the webhook (integer).
+        event_type:
+          example: message:sent:new
+          type: string
+          description: 'Event topic that will trigger the webhook. For the current
+            list of supported values see TimelinesAI *Event Types* documentation (for
+            example: `message:sent:new`, `message:received:new`).'
+        enabled:
+          example: true
+          type: boolean
+          description: Flag indicating whether the subscription is active. When **false**,
+            deliveries are paused but the definition is kept.
+        url:
+          example: http://www.example.com/api/hook
+          type: string
+          description: Destination HTTPS endpoint that TimelinesAI will call. Must
+            be publicly accessible and respond with `2xx` status within 5 seconds.
+        errors_counter:
+          example: 0
+          type: integer
+          description: Number of consecutive delivery failures. After several failures
+            TimelinesAI sends an email alert to the workspace owner but does **not**
+            disable the webhook automatically.
+      description: Server generated representation of a webhook subscription including
+        its unique identifier and delivery error statistics.
+    WebhookInfoList:
+      type: array
+      items:
+        $ref: '#/components/schemas/WebhookInfo'
+    ErrorResponse:
+      required:
+      - message
+      - status
+      type: object
+      properties:
+        message:
+          type: string
+        status:
+          type: string
+          example: error
+          enum:
+          - ok
+          - error
+    ChatListResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          type: object
+          properties:
+            has_more_pages:
+              type: boolean
+            chats:
+              type: array
+              items:
+                $ref: '#/components/schemas/ChatInfo'
+    ChatInfoResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          $ref: '#/components/schemas/ChatInfo'
+    MessageListResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          type: object
+          properties:
+            has_more_pages:
+              type: boolean
+            messages:
+              type: array
+              items:
+                $ref: '#/components/schemas/MessageInfo'
+    MessageInfoResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          $ref: '#/components/schemas/MessageInfo'
+    MessageStatusHistoryResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/MessageStatusHistoryRecord'
+    MessageReactionsResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          $ref: '#/components/schemas/MessageReactionsObject'
+    MessageReactionsObject:
+      type: object
+      example:
+        👍: '2'
+        ❤️: '5'
+    MessageSendResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          $ref: '#/components/schemas/MessageID'
+    LabelsModifyResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          $ref: '#/components/schemas/LabelsList'
+    NoteModifyResponse:
+      type: object
+      required:
+      - status
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          $ref: '#/components/schemas/MessageID'
+    ReactionsSetResponse:
+      type: object
+      required:
+      - status
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          $ref: '#/components/schemas/MessageID'
+    WhatsappAccountsResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          $ref: '#/components/schemas/WhatsappAccountsList'
+    WorkspaceTeammatesResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          $ref: '#/components/schemas/WorkspaceTeammatesList'
+    WorkspaceQuotaInfoResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          $ref: '#/components/schemas/WorkspaceQuotaInfo'
+    FileListResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          $ref: '#/components/schemas/FileInfoList'
+    FileInfoResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          $ref: '#/components/schemas/FileInfo'
+    WebhookListResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          $ref: '#/components/schemas/WebhookInfoList'
+      description: Standard envelope returning an array of webhooks in the **data**
+        field.
+    WebhookInfoResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          $ref: '#/components/schemas/WebhookInfo'
+      description: Standard envelope returning a single webhook in the **data** field.
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+security:
+- bearerAuth: []

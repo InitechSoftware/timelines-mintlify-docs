@@ -1,0 +1,938 @@
+openapi: 3.0.3
+tags:
+  - name: workspaces
+  - name: users
+  - name: whatsappAccounts
+  - name: qr
+  - name: publicAPI
+info:
+  title: Partner API
+  version: 1.0.1
+  description: Partner-facing HTTP API used by approved integrators to provision and
+    manage TimelinesAI workspaces, users and WhatsApp connections on behalf of their
+    customers. All endpoints are versioned under /partner/api/v1 and secured with
+    JWT bearer authentication. Obtaining a workspace Public API token, together with
+    the capabilities of the Public API such as webhook subscriptions, enables partners
+    to build complex integrations for their customers.
+servers:
+- url: /partner/api/v1
+  description: Partner API root URL
+security:
+- bearerAuth: []
+paths:
+  /workspaces:
+    post:
+      summary: Create a workspace
+      operationId: workspaceCreate
+      tags:
+        - workspaces
+      parameters:
+        - $ref: '#/components/parameters/X-TL-Partner-Id'
+      requestBody:
+        required: true
+        description: Workspace creation request payload
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PartnerAPIWorkspaceCreateRequest'
+      responses:
+        '201':
+          description: Workspace created
+          headers:
+            X-TL-API-Version:
+              schema:
+                type: string
+              description: Partner API version. Current version is v1
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerAPIWorkspaceResponse'
+        '409':
+          $ref: '#/components/responses/WorkspaceCreationFailed'
+      description: "Creates a new partner-managed workspace and automatically provisions\
+        \ an Owner user. The workspace_id identifier is derived from the requested\
+        \ display_name (lowercase, alphanumeric and dashes, up to 30 characters).\
+        \ The workspace is created on the calling partner\u2019s plan and linked to\
+        \ that partner for ownership and billing-eligibility checks. An Owner user\
+        \ is created with a non-login, system-managed email of the form \"<user_id>-<workspace-id>@partners.timelines.ai\"\
+        \ and added to the default workspace group. Seats are allocated according\
+        \ to seats_purchased (1\u201399); the Owner consumes one seat and the remaining\
+        \ seats become available for additional agents. On success the response returns\
+        \ workspace metadata, seat counters and the newly created owner_user_id. Conflicts\
+        \ on identifier generation (duplicate workspace_id) are reported with a 409\
+        \ WorkspaceCreationFailed error."
+  /workspaces/{workspace_id}:
+    get:
+      summary: Get workspace details
+      operationId: workspaceGet
+      tags:
+        - workspaces
+      parameters:
+        - $ref: '#/components/parameters/X-TL-Partner-Id'
+        - name: workspace_id
+          in: path
+          required: true
+          description: The unique identifier for the workspace.
+          schema:
+            type: string
+      responses:
+        '200':
+          headers:
+            X-TL-API-Version:
+              schema:
+                type: string
+              description: Partner API version. Current version is v1
+          description: Workspace details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerAPIWorkspaceExtendedResponse'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+      description: Returns a consolidated, read-only summary of a partner-managed
+        workspace. The payload includes basic workspace identity (workspace_id, display_name),
+        seat allocation and utilization, messaging and API quotas, any non-recurring
+        quota balance, the list of users in the workspace, WhatsApp accounts associated
+        with the workspace, and currently active QR-code links. Only workspaces that
+        are owned by the calling partner and are not -billing managed are eligible.
+        If the workspace does not exist or is not linked to the partner, a 404 error
+        is returned.
+    patch:
+      summary: Update workspace
+      operationId: workspaceUpdate
+      tags:
+        - workspaces
+      parameters:
+        - $ref: '#/components/parameters/X-TL-Partner-Id'
+        - name: workspace_id
+          in: path
+          required: true
+          description: The unique identifier for the workspace.
+          schema:
+            type: string
+      requestBody:
+        required: false
+        description: Workspace update request payload
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PartnerAPIWorkspaceRequest'
+      responses:
+        '200':
+          headers:
+            X-TL-API-Version:
+              schema:
+                type: string
+              description: Partner API version. Current version is v1
+          description: Workspace updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerAPIWorkspaceResponse'
+        '404':
+          $ref: '#/components/responses/WorkspaceNotFound'
+      description: "Updates mutable workspace attributes for a partner-managed workspace.\
+        \ Partners can change the human-readable display_name and/or adjust the number\
+        \ of purchased seats (seats_purchased, 1\u201399). When the purchased seats\
+        \ are reduced below current utilization, the platform may automatically suspend\
+        \ users and their associated WhatsApp accounts to comply with the new limit.\
+        \ The response returns the updated workspace representation, including seat\
+        \ counters and, when applicable, details of suspended members so partners\
+        \ can reconcile the downgrade on their side. Standard partner ownership and\
+        \ billing eligibility checks apply before processing the update."
+  /workspaces/{workspace_id}/users:
+    post:
+      summary: Create users in workspace
+      operationId: workspaceCreateUsers
+      tags:
+        - workspaces
+        - users
+      parameters:
+        - $ref: '#/components/parameters/X-TL-Partner-Id'
+        - name: workspace_id
+          description: The unique identifier for the workspace.
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        description: User creation request payload
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PartnerAPIUserRequest'
+      responses:
+        '201':
+          headers:
+            X-TL-API-Version:
+              schema:
+                type: string
+              description: Partner API version. Current version is v1
+          description: Users created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerAPIUsersResponse'
+        '409':
+          $ref: '#/components/responses/SeatsFull'
+      description: "Bulk-creates placeholder agent users in a partner-managed workspace.\
+        \ Each request specifies a count of users to create. For every user the platform:\
+        \ \u2022 assigns the agent role and activated status, \u2022 creates a non-login,\
+        \ system-managed email \"<user_id>-<workspace-id>@partners.timelines.ai\"\
+        , \u2022 assigns the user to the workspace\u2019s Default group, \u2022 consumes\
+        \ one seat from the workspace. The operation is all-or-nothing: if there are\
+        \ not enough available seats to satisfy count, the request fails with a seats_full\
+        \ error and no users are created. On success the response returns updated\
+        \ seat counters and the list of created users, including their identifiers\
+        \ and metadata needed for downstream QR-link generation."
+  /workspaces/{workspace_id}/users/{user_id}/qr:
+    post:
+      summary: Generate QR code for user
+      operationId: userRequestQRLink
+      tags:
+        - qr
+      parameters:
+        - $ref: '#/components/parameters/X-TL-Partner-Id'
+        - name: workspace_id
+          in: path
+          required: true
+          description: The unique identifier for the workspace.
+          schema:
+            type: string
+        - name: user_id
+          in: path
+          required: true
+          description: The unique identifier for the user.
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        description: QR code link generation request payload
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PartnerAPIExpiresRequest'
+      responses:
+        '200':
+          description: QR code generated
+          headers:
+            X-TL-API-Version:
+              schema:
+                type: string
+              description: Partner API version. Current version is v1
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerAPIQRCodeResponse'
+        '404':
+          $ref: '#/components/responses/UserNotFound'
+      description: "Issues a long-lived WhatsApp QR-code link for a specific user\
+        \ in a partner-managed workspace. If the user already has a connected WhatsApp\
+        \ account, that account is disconnected first and the previous QR link (if\
+        \ any) is revoked. Only one active QR link per user is allowed at any given\
+        \ time; generating a new link invalidates any existing one. The request optionally\
+        \ accepts expires_in_hours (1\u2013168, default 24) to control how long the\
+        \ QR link remains valid. The response includes the workspace_id, user_id,\
+        \ an unguessable qr_link URL, its expires_at timestamp, and flags indicating\
+        \ whether an existing WhatsApp account was disconnected and whether a previously\
+        \ active QR link was revoked. Generating a new QR code link is a destructive\
+        \ action: any currently connected WhatsApp account for this user will be forcibly\
+        \ disconnected."
+  /workspaces/{workspace_id}/users/{user_id}/whatsapp/disconnect:
+    post:
+      summary: Disconnect WhatsApp account
+      operationId: disconnectWA
+      tags:
+        - whatsappAccounts
+      parameters:
+        - $ref: '#/components/parameters/X-TL-Partner-Id'
+        - name: workspace_id
+          in: path
+          required: true
+          description: The unique identifier for the workspace.
+          schema:
+            type: string
+        - name: user_id
+          in: path
+          required: true
+          description: The unique identifier for the user.
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: WhatsApp disconnected
+          headers:
+            X-TL-API-Version:
+              schema:
+                type: string
+              description: Partner API version. Current version is v1
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerAPIDisconnectResponse'
+        '404':
+          $ref: '#/components/responses/UserNotFound'
+      description: Forcibly disconnects the WhatsApp account currently linked to a
+        specific user. If the user has an active WhatsApp connection, the session
+        is terminated, sync is stopped and credentials are revoked. The response includes
+        identifiers of the disconnected WhatsApp account and phone number together
+        with a disconnected=true flag and the disconnection timestamp. If the user
+        has no active WhatsApp account, the operation is treated as an idempotent
+        no-op and returns disconnected=false. The call is still subject to standard
+        partner authentication and workspace ownership checks.
+  /workspaces/{workspace_id}/api-token:
+    get:
+      summary: Get public API token
+      operationId: getPublicAPIToken
+      tags:
+        - publicAPI
+      parameters:
+        - $ref: '#/components/parameters/X-TL-Partner-Id'
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Public API token
+          headers:
+            X-TL-API-Version:
+              schema:
+                type: string
+              description: Partner API version. Current version is v1
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerAPIPublicTokenResponse'
+      description: 'Retrieves the current Public API token for a partner-managed workspace.
+        If a token already exists it is returned as the raw token value so that the
+        partner can configure it in their integration. If no token exists yet, the
+        platform creates a new one and returns it. Only workspaces owned by the calling
+        partner and not billed via are eligible. The response must be treated as sensitive:
+        tokens are returned only over authenticated Partner API calls .'
+    post:
+      summary: Rotate public API token
+      operationId: rotatePublicAPIToken
+      tags:
+        - publicAPI
+      parameters:
+        - $ref: '#/components/parameters/X-TL-Partner-Id'
+        - name: workspace_id
+          in: path
+          required: true
+          description: The unique identifier for the workspace.
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Token rotated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerAPIPublicTokenResponse'
+      description: "Rotates the Public API token for a partner-managed workspace.\
+        \ A new token is generated, persisted according to the platform\u2019s security\
+        \ rules, and the previous token is invalidated immediately. Each successful\
+        \ rotation returns the new raw token value and the rotated_at timestamp. Subsequent\
+        \ calls rotate the token again; the operation is not idempotent. Workspace\
+        \ ownership and billing eligibility checks apply. Partners are expected to\
+        \ update their integrations to use the newly issued token as soon as it is\
+        \ returned."
+components:
+  schemas:
+    PartnerAPIWorkspaceCreateRequest:
+      type: object
+      properties:
+        display_name:
+          type: string
+          description: Workspace display name
+          example: my-first-workspace (must contain only letters, digits and dash)
+          minLength: 1
+          maxLength: 30
+        seats_purchased:
+          type: integer
+          description: Number of workspace seats
+          example: 3
+          minimum: 1
+          maximum: 99
+          default: 1
+      required:
+        - display_name
+        - seats_purchased
+      description: "Request payload for creating a new partner-managed workspace.\
+        \ Partners supply a human-friendly display_name and the initial number of\
+        \ purchased seats. The server derives the internal workspace_id identifier\
+        \ from display_name and provisions the workspace on the partner\u2019s plan\
+        \ with the requested seats."
+    PartnerAPIWorkspaceResponse:
+      type: object
+      properties:
+        workspace_id:
+          type: string
+          description: Unique identifier for the workspace
+          example: ws_1234567890abcdef
+        display_name:
+          type: string
+          description: Workspace display name
+          example: my-first-workspace
+        plan_id:
+          type: integer
+          description: Workspace plan type
+          example: 1
+        seats_total:
+          type: integer
+          description: Total number of seats in the workspace
+          example: 3
+        seats_available:
+          type: integer
+          description: Number of available seats in the workspace
+          example: 2
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp of the last update
+          example: '2024-01-01T12:00:00Z'
+        owner_user_id:
+          type: integer
+          description: User ID of the workspace owner
+          example: 42
+        group_id:
+          type: integer
+          description: Group ID associated with the workspace
+          example: 7
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp of workspace creation
+          example: '2024-01-01T10:00:00Z'
+        suspended_members:
+          type: array
+          description: array of suspended user IDs
+          items:
+            $ref: '#/components/schemas/SuspendedMember'
+      required:
+        - workspace_id
+        - display_name
+        - plan_id
+        - seats_total
+        - seats_available
+      description: Representation of a partner-managed workspace returned after creation
+        or update. It includes the stable workspace_id, display_name, linked plan_id,
+        seat allocation and utilization, audit timestamps, the default group identifier,
+        the automatically generated Owner user, and any suspended members that resulted
+        from a seat downgrade.
+    PartnerAPIWorkspaceExtendedResponse:
+      type: object
+      properties:
+        workspace_id:
+          type: string
+          description: Unique identifier for the workspace
+          example: ws_1234567890abcdef
+        display_name:
+          type: string
+          description: Workspace display name
+          example: my-first-workspace
+        seats:
+          $ref: '#/components/schemas/PartnerAPIQuota'
+        messages_quota:
+          $ref: '#/components/schemas/PartnerAPIQuota'
+        api_calls_quota:
+          $ref: '#/components/schemas/PartnerAPIQuota'
+        whatsapp_accounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/PartnerAPIWhatsappAccount'
+        non_recurring_quota:
+          $ref: '#/components/schemas/PartnerAPINonRecurringQuota'
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/PartnerAPIUser'
+        qr_links:
+          type: array
+          items:
+            $ref: '#/components/schemas/PartnerAPIQRCodeLink'
+      required:
+        - workspace_id
+        - display_name
+        - seats
+        - messages_quota
+        - api_calls_quota
+        - non_recurring_quota
+        - users
+      description: Detailed summary of a partner-managed workspace. Combines core
+        workspace identity with seat usage, messaging and Public API quotas, non-recurring
+        quota balances, the list of users, WhatsApp accounts associated with the workspace,
+        and active QR links. Used by partners to monitor utilization and operational
+        health of a workspace in a single call.
+    PartnerAPIWorkspaceRequest:
+      type: object
+      properties:
+        display_name:
+          type: string
+          description: New workspace display name
+          example: updated-workspace-name
+          minLength: 1
+          maxLength: 30
+        seats_purchased:
+          type: integer
+          description: New number of workspace seats
+          example: 5
+          minimum: 1
+          maximum: 99
+      description: Partial update payload for a workspace. Allows partners to change
+        the workspace display_name and/or the number of purchased seats. Fields are
+        optional and only those provided are updated. Business rules around seat downgrades,
+        including potential user suspensions, are enforced server-side.
+    PartnerAPIUserRequest:
+      type: object
+      properties:
+        count:
+          type: integer
+          description: Number of users to create
+          example: 3
+          minimum: 1
+          maximum: 99
+      required:
+        - count
+      description: Request payload for bulk-creating placeholder agent users in a
+        workspace. The count field specifies how many users to provision in a single
+        all-or-nothing operation, subject to available seats in the workspace.
+    PartnerAPIUsersResponse:
+      type: object
+      properties:
+        workspace_id:
+          type: string
+          description: Unique identifier for the workspace
+          example: my-first-workspace
+        seats_total:
+          type: integer
+          description: Total number of seats in the workspace
+          example: 3
+        seats_available:
+          type: integer
+          description: Number of available seats in the workspace
+          example: 2
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/PartnerAPIUser'
+      required:
+        - workspace_id
+        - seats_total
+        - seats_available
+        - users
+      description: Response payload for bulk user creation. Contains the workspace_id,
+        updated seat counters (seats_total and seats_available), and the list of created
+        users with their identifiers and metadata. This response is typically consumed
+        to track which agents were provisioned for QR-link generation.
+    PartnerAPIExpiresRequest:
+      type: object
+      properties:
+        expires_in_hours:
+          type: integer
+          description: Number of hours until the link expires
+          minimum: 1
+          maximum: 168
+          default: 24
+      description: Request payload for configuring the lifetime of a WhatsApp QR link.
+        The optional expires_in_hours field controls how long the issued qr_link remains
+        valid. If omitted, a sensible default (24 hours) is applied by the server.
+    PartnerAPIQRCodeResponse:
+      type: object
+      properties:
+        workspace_id:
+          type: string
+          description: Unique identifier for the workspace
+          example: my-first-workspace
+        user_id:
+          type: integer
+          description: Unique identifier for the user
+          example: 42
+        qr_link:
+          type: string
+          description: QR code link for connecting to WhatsApp
+        expires_at:
+          type: string
+          description: Expiration timestamp of the QR code link
+          format: date-time
+          example: '2024-01-01T12:00:00Z'
+        whatsapp_disconnected:
+          type: boolean
+          description: Indicates whether an existing WhatsApp account was disconnected
+            for this user
+        previous_qr_revoked:
+          type: boolean
+          description: Indicates whether a previously issued QR link for this user
+            was revoked
+      required:
+        - workspace_id
+        - user_id
+        - qr_link
+        - expires_at
+        - whatsapp_disconnected
+        - previous_qr_revoked
+      description: Response payload returned when issuing a WhatsApp QR link for a
+        user. Includes the workspace_id and user_id, the unguessable qr_link URL,
+        its expires_at timestamp, and boolean flags showing whether an existing WhatsApp
+        account was disconnected and whether any previously issued QR link for this
+        user was revoked.
+    PartnerAPIDisconnectResponse:
+      type: object
+      properties:
+        workspace_id:
+          type: string
+          description: Unique identifier for the workspace
+        user_id:
+          type: integer
+          description: Unique identifier for the user
+        disconnected:
+          type: boolean
+          description: Indicates whether a WhatsApp account was disconnected
+          default: true
+        disconnected_at:
+          type: string
+          description: Timestamp of the disconnection event
+          format: date-time
+          example: '2024-01-01T12:00:00Z'
+        whatsapp_account_id:
+          type: integer
+          description: ID of the disconnected WhatsApp account
+        phone_number:
+          type: string
+          description: Phone number associated with the disconnected WhatsApp account
+        description:
+          type: string
+          description: Additional information about the disconnection
+      description: Response payload for a WhatsApp disconnect operation. Indicates
+        whether a WhatsApp account was actually disconnected for the given user, provides
+        the disconnection timestamp, and, when applicable, echoes the workspace_id,
+        user_id, whatsapp_account_id and phone_number involved in the operation.
+    PartnerAPIPublicTokenResponse:
+      type: object
+      properties:
+        workspace_id:
+          type: string
+          description: Unique identifier for the workspace
+        token:
+          type: string
+          description: Raw Public API token value
+        rotated_at:
+          type: string
+          description: Timestamp when the token was rotated and became invalid.
+          format: date-time
+          example: '2024-01-01T12:00:00Z'
+      required:
+        - workspace_id
+        - token
+      description: Response payload for retrieving or rotating a workspace Public
+        API token. Returns the workspace_id and the raw token value, and, for rotation
+        calls, the rotated_at timestamp that indicates when the previous token became
+        invalid.
+    PartnerAPIError:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Machine-readable error code
+        status:
+          type: integer
+          description: HTTP status code
+        description:
+          type: string
+          description: Human-readable error description
+      required:
+        - error
+        - status
+      description: Standard error envelope used by Partner API endpoints. The error
+        field contains a machine-readable error code such as partner_not_found, partner_not_active,
+        invalid_signature, timestamp_out_of_range, workspace_not_found, workspace_not_owned_by_partner
+        or workspace_billing_managed. The status field repeats the HTTP status code,
+        and description may contain a human-readable explanation suitable for logs
+        and troubleshooting.
+    SuspendedMember:
+      type: object
+      description: Suspended users
+      properties:
+        user_id:
+          type: integer
+          description: ID of the suspended user
+          example: 123
+        whatsapp_account_id:
+          type: integer
+          description: ID of the WhatsApp account associated with the suspended user
+          example: 1092930
+        phone_numbers:
+          type: array
+          items:
+            type: string
+          description: List of phone numbers associated with the suspended user
+          example:
+          - '+1234567890'
+      required:
+        - user_id
+    PartnerAPIQuota:
+      type: object
+      description: Workspace quota details
+      properties:
+        total:
+          type: integer
+          description: Total number of seats in the workspace
+          example: 10
+        used:
+          type: integer
+          description: Number of used seats in the workspace
+          example: 7
+        period_start:
+          type: string
+          format: date-time
+          description: Start date of the quota period
+          example: '2024-01-01T00:00:00Z'
+        period_end:
+          type: string
+          format: date-time
+          description: End date of the quota period
+          example: '2024-12-31T23:59:59Z'
+      required:
+        - total
+        - used
+    PartnerAPIWhatsappAccount:
+      type: object
+      description: WhatsApp account details
+      properties:
+        user_id:
+          type: integer
+          description: User ID associated with the WhatsApp account
+          example: wa_abcdef123456
+        connected:
+          type: boolean
+          description: Current status of the WhatsApp account
+          example: true
+        whatsapp_account_id:
+          type: integer
+          description: ID of the WhatsApp account
+          example: 987654321
+        phone_number_e164:
+          type: string
+          description: Phone number associated with the WhatsApp account
+          example: '+1234567890'
+        connection_status:
+          type: string
+          description: Connection status of the WhatsApp account
+          example: connected
+        connected_at:
+          type: string
+          format: date-time
+          description: Timestamp when the WhatsApp account was connected
+          example: '2024-01-15T10:00:00Z'
+      required:
+        - connected
+        - whatsapp_account_id
+        - phone_number_e164
+        - connection_status
+    PartnerAPINonRecurringQuota:
+      type: object
+      properties:
+        remaining_balance:
+          type: integer
+          description: Remaining balance of non-recurring quota
+          example: 50
+        last_updated_at:
+          type: string
+          format: date-time
+          description: Timestamp of the last recharge
+          example: '2024-01-10T12:00:00Z'
+      description: Non-recurring quota information for a workspace. Represents an
+        additional, non-recurring balance (for example, one-off purchased message
+        packs) with the remaining_balance and the timestamp when it was last updated.
+    PartnerAPIUser:
+      type: object
+      properties:
+        user_id:
+          type: integer
+          description: Unique identifier for the user
+          example: 42
+        display_name:
+          type: string
+          description: Display name of the user
+          example: John Doe
+        role:
+          type: string
+          description: Role of the user in the workspace
+          example: owner
+        email:
+          type: string
+          description: Email address of the user
+          example: admin@timelines.ai
+        status:
+          type: string
+          description: Status of the user
+          example: active
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp of user creation
+          example: '2024-01-01T10:00:00Z'
+      required:
+        - user_id
+        - display_name
+        - email
+        - status
+        - created_at
+      description: User entry returned as part of a workspace summary or bulk user
+        creation response. Captures the user identifier, display name, email, role
+        within the workspace and current status, together with the creation timestamp.
+        Partner-created placeholders follow the partners.timelines.ai email pattern
+        and typically have agent role and activated status.
+    PartnerAPIQRCodeLink:
+      type: object
+      properties:
+        qr_link:
+          type: string
+          description: QR code link for connecting to WhatsApp
+          example: https://timelines.ai/qr/abcdef123456
+        user_id:
+          type: integer
+          description: ID of the user associated with the QR code link
+          example: 42
+        expires_at:
+          type: string
+          format: date-time
+          description: Expiration timestamp of the QR code link
+          example: '2024-01-02T10:00:00Z'
+      required:
+        - qr_link
+        - user_id
+        - expires_at
+      description: Active QR-link record for a user in a partner-managed workspace.
+        Includes the unguessable qr_link URL, the user_id it belongs to, and the expires_at
+        timestamp after which the link can no longer be used to establish a WhatsApp
+        connection.
+  responses:
+    SeatsFull:
+      description: Seats are full
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PartnerAPIError'
+    UserNotFound:
+      description: User not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PartnerAPIError'
+    UserNotActive:
+      description: User not active
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PartnerAPIError'
+    MissingHeader:
+      description: Header is missing
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PartnerAPIError'
+    PartnerNotFound:
+      description: Partner not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PartnerAPIError'
+    PartnerNotActive:
+      description: Partner not active
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PartnerAPIError'
+    TimestampOutOfRange:
+      description: Timestamp out of range
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PartnerAPIError'
+    MissingClaim:
+      description: Claim is missing
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PartnerAPIError'
+    TokenNotActive:
+      description: Token is not active
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PartnerAPIError'
+    InvalidSignature:
+      description: Invalid signature
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PartnerAPIError'
+    TokenDecodeError:
+      description: Invalid signature
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PartnerAPIError'
+    InvalidRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PartnerAPIError'
+    MethodNotAllowed:
+      description: Method not allowed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PartnerAPIError'
+    WorkspaceCreationFailed:
+      description: Workspace with this name already exists
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PartnerAPIError'
+    WorkspaceNotFound:
+      description: Workspace not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PartnerAPIError'
+    UserNotInWorkspace:
+      description: User is not a member of the workspace
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PartnerAPIError'
+    WorkspaceNotOwnedByPartner:
+      description: Workspace not owned by partner
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PartnerAPIError'
+    WorkspaceBillingManaged:
+      description: Workspace belongs to a paid account and cannot be managed via partner
+        API
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PartnerAPIError'
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'JWT bearer authentication. The token payload must include partner_id,
+        nbf (not-before) and exp (expiry) claims. All Partner API requests must be
+        authenticated with Authorization: Bearer <token>.'
+  parameters:
+    X-TL-Partner-Id:
+      name: X-TL-Partner-Id
+      in: header
+      description: The unique identifier for the partner.
+      required: true
+      schema:
+        type: string
