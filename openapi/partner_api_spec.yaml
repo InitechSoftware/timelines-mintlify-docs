@@ -49,18 +49,15 @@ paths:
                 $ref: '#/components/schemas/PartnerAPIWorkspaceResponse'
         '409':
           $ref: '#/components/responses/WorkspaceCreationFailed'
-      description: "Creates a new partner-managed workspace and automatically provisions\
-        \ an Owner user. The workspace_id identifier is derived from the requested\
-        \ display_name (lowercase, alphanumeric and dashes, up to 30 characters).\
-        \ The workspace is created on the calling partner\u2019s plan and linked to\
-        \ that partner for ownership and billing-eligibility checks. An Owner user\
-        \ is created with a non-login, system-managed email of the form \"<user_id>-<workspace-id>@partners.timelines.ai\"\
-        \ and added to the default workspace group. Seats are allocated according\
-        \ to seats_purchased (1\u201399); the Owner consumes one seat and the remaining\
-        \ seats become available for additional agents. On success the response returns\
-        \ workspace metadata, seat counters and the newly created owner_user_id. Conflicts\
-        \ on identifier generation (duplicate workspace_id) are reported with a 409\
-        \ WorkspaceCreationFailed error."
+      description: Creates a new partner-managed workspace and automatically provisions an Owner user. 
+        The workspace_id identifier is derived from the requested display_name (lowercase, alphanumeric and dashes,
+        up to 30 characters). The workspace is created on the calling partner's plan and linked to that partner for 
+        ownership and billing-eligibility checks. An Owner user is created with a non-login, system-managed email of 
+        the form `<user_id>-<workspace-id>@partners.timelines.ai` and added to the default workspace group. 
+        Seats are allocated according to seats_purchased (1-99); the Owner consumes one seat and the remaining 
+        seats become available for additional agents. On success the response returns workspace metadata, seat counters 
+        and the newly created owner_user_id. Conflicts on identifier generation (duplicate workspace_id) are reported 
+        with a 409 WorkspaceCreationFailed error.
   /workspaces/{workspace_id}:
     get:
       summary: Get workspace details
@@ -133,7 +130,7 @@ paths:
           $ref: '#/components/responses/WorkspaceNotFound'
       description: "Updates mutable workspace attributes for a partner-managed workspace.\
         \ Partners can change the human-readable display_name and/or adjust the number\
-        \ of purchased seats (seats_purchased, 1\u201399). When the purchased seats\
+        \ of purchased seats (seats_purchased, 1-99). When the purchased seats\
         \ are reduced below current utilization, the platform may automatically suspend\
         \ users and their associated WhatsApp accounts to comply with the new limit.\
         \ The response returns the updated workspace representation, including seat\
@@ -178,10 +175,10 @@ paths:
           $ref: '#/components/responses/SeatsFull'
       description: "Bulk-creates placeholder agent users in a partner-managed workspace.\
         \ Each request specifies a count of users to create. For every user the platform:\
-        \ \u2022 assigns the agent role and activated status, \u2022 creates a non-login,\
-        \ system-managed email \"<user_id>-<workspace-id>@partners.timelines.ai\"\
-        , \u2022 assigns the user to the workspace\u2019s Default group, \u2022 consumes\
-        \ one seat from the workspace. The operation is all-or-nothing: if there are\
+        \ assigns the agent role and activated status, creates a non-login,\
+        \ system-managed email `<user_id>-<workspace-id>@partners.timelines.ai`,\
+        \ assigns the user to the workspace's Default group, consumes\
+        \ one seat from the workspace.\n The operation is all-or-nothing: if there are\
         \ not enough available seats to satisfy count, the request fails with a seats_full\
         \ error and no users are created. On success the response returns updated\
         \ seat counters and the list of created users, including their identifiers\

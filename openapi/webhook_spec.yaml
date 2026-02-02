@@ -1,0 +1,546 @@
+openapi: 3.1.0
+info:
+  title: Webhook API
+  description: |
+    Webhooks are a way to send real-time data from one application to another whenever a specific event occurs. Our specific implementation sends data using the POST method to a specified endpoint. Authentication of the request or customizing headers is not supported.
+
+    ## Key Features
+
+    - **Multiple Webhooks per Workspace**: Create multiple webhooks within a single workspace, each supporting one specific event.
+    - **Customizable Limits**: The default limit on the number of webhooks per workspace is 10. To increase this limit, a paid add-on is available. Please contact support for more information.
+    - **Audit log**: An audit log for all changes in webhook endpoints is available on the Webhooks management display.
+    - **Execution log**: Execution logs for each webhook can be downloaded from the Webhooks management page. Up to 1000 execution entries are stored for a maximum of 10 days.
+    - **Error Notification for Webhook Endpoint Failures**: An email notification is sent to workspace owner in case of multiple successive errors for a specific webhook endpoint. However, the webhook will not be disabled.
+    
+    ### Note: 
+    - All message and chat events are triggered for all WhatsApp accounts connected to the workspace, including those initiated from a mobile app or another linked device.
+    The incoming/outgoing direction is relative to the WhatsApp account as a whole, not to any specific session (such as a mobile app, WhatsApp Web, or TimelinesAI connection).
+    - whatsapp:account:disconnected is triggered when the WhatsApp account is permanently disconnected from the workspace, while whatsapp:account:suspended is triggered when message syncing is temporary paused due to subscription cancellation or downgrade (it will not be triggered for disconnection).
+    We recommend to subscribe for both events to ensure that messaging operation is not interrupted.
+    - IDs of objects returned by Webhooks can be used in conjunction with TimelinesAI Public API and Zapier to fetch additional data or perform actions.
+  version: 2.0.0
+
+webhooks:
+  message:new:
+    post:
+      summary: Triggered when there is a new message.
+      tags:
+        - messages
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  message:sent:new:
+    post:
+      summary: Triggered when a new outgoing message.
+      tags:
+        - messages
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  message:received:new:
+    post:
+      summary: Triggered when there is a new incoming message.
+      tags:
+        - messages
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  whatsapp:account:connected:
+    post:
+      summary: Triggered when WhatsApp account was (re)connected.
+      tags:
+        - whatsapp_accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  whatsapp:account:disconnected:
+    post:
+      summary: Triggered when WhatsApp account was disconnected.
+      tags:
+        - whatsapp_accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  whatsapp:account:suspended:
+    post:
+      summary: Triggered when a WhatsApp account message syncing is suspended for a reason such as subscription cancellation or downgrade.
+      tags:
+        - whatsapp_accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  whatsapp:account:resumed:
+    post:
+      summary: Triggered when a WhatsApp account message syncing is resumed.
+      tags:
+        - whatsapp_accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  chat:new:
+    post:
+      summary:  Triggered when there is a new direct or group chat.
+      tags:
+        - chats
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  chat:incoming:new:
+    post:
+      summary: Triggered when there is a new incoming direct chat.
+      tags:
+        - chats
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  chat:outgoing:new:
+    post:
+      summary: Triggered when there is a new outgoing direct chat.
+      tags:
+        - chats
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  chat:responsible:assigned:
+    post:
+      summary: Triggered when a chat was (re)assigned to a workspace member.
+      tags:
+        - chats
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  chat:responsible:unassigned:
+    post:
+      summary: Triggered when a chat was unassigned.
+      tags:
+        - chats
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+components:
+  schemas:
+# Main data objects
+    ChatData:
+      type: object
+      required:
+        - event_type
+        - chat
+        - whatsapp_account
+      properties:
+        event_type:
+          type: string
+          description: Webhook code name
+          example: chat:new
+          enum:
+            - chat:new
+            - chat:incoming:new
+            - chat:outgoing:new
+            - chat:responsible:assigned
+            - chat:responsible:unassigned
+        chat:
+          $ref: '#/components/schemas/ChatDataInfo'
+        whatsapp_account:
+          $ref: '#/components/schemas/ChatDataWhatsappAccountInfo'
+
+    AccountData:
+      type: object
+      required:
+        - event_type
+        - whatsapp_account
+      properties:
+        event_type:
+          type: string
+          description: Webhook event name
+          example: whatsapp:account:connected
+          enum:
+            - whatsapp:account:connected
+            - whatsapp:account:disconnected
+            - whatsapp:account:suspended
+            - whatsapp:account:resumed
+        whatsapp_account:
+          $ref: '#/components/schemas/AccountDataWhatsappAccountInfo'
+
+    MessageData:
+      type: object
+      required:
+        - event_type
+        - chat
+        - whatsapp_account
+        - message
+      properties:
+        event_type:
+          type: string
+          description: Webhook event name
+          enum:
+            - message:new
+            - message:sent:new
+            - message:received:new
+          example: message:new
+        chat:
+          $ref: '#/components/schemas/MessageDataChatInfo'
+        whatsapp_account:
+          $ref: '#/components/schemas/MessageDataWhatsappAccountInfo'
+        message:
+          $ref: '#/components/schemas/MessageDataInfo'
+
+# Subobjects
+    AccountDataWhatsappAccountInfo:
+      type: object
+      required:
+        - id
+        - phone
+        - connected_on
+        - status
+        - account_name
+        - owner_name
+        - owner_email
+      properties:
+        id:
+          type: string
+          description: WhatsApp account global ID
+          example: 123456789@s.whatsapp.net
+        phone:
+          type: string
+          description: Phone number associated with the WhatsApp account
+          example: "+123456789"
+        connected_on:
+          type: string
+          example: 2024-01-08 10:35:18 +0200
+        disconnected_on:
+          type: string
+          example: 2024-01-08 10:35:18 +0200
+        status:
+          type: string
+          example: active
+        account_name:
+          type: string
+          description: Name of the WhatsApp account
+          example: Smith
+        owner_name:
+          type: string
+          example: John Smith
+        owner_email:
+          type: string
+          example: john-smith@example.com
+
+    PartyInfo:
+      type: object
+      required:
+        - full_name
+      properties:
+        full_name:
+          type: string
+          example: John Smith
+        phone:
+          type: string
+          example: "+123456789"
+
+    AttachmentInfo:
+      type: object
+      required:
+        - temporary_download_url
+        - filename
+        - size
+        - mimetype
+      properties:
+        temporary_download_url:
+          type: string
+          example: https://example.s3.amazonaws.com/att/...
+          description: valid for 15 minutes
+        filename:
+          type: string
+          example: example.doc
+        size:
+          type: integer
+          example: 1234567
+        mimetype:
+          type: string
+          example: application/msword
+
+    AttachmentList:
+      type: array
+      items:
+        $ref: '#/components/schemas/AttachmentInfo'
+
+    MessageDataInfo:
+      type: object
+      required:
+        - text
+        - direction
+        - origin
+        - timestamp
+        - message_uid
+        - sender
+        - recipient
+
+      properties:
+        text:
+          type: string
+          example: Sending some example document to you
+        direction:
+          type: string
+          example: sent
+        origin:
+          example: Public API
+          type: string
+        timestamp:
+          type: string
+          example: 2024-01-08 10:35:18 +0200
+        message_uid:
+          type: string
+          example: c7ec509d-0171-1ead-a84b-c6943a644768
+        reply_to_uid:
+          type: string
+          example: c7ec509d-0171-1ead-a84b-c6943a644768
+        sender:
+          $ref: '#/components/schemas/PartyInfo'
+        recipient:
+          $ref: '#/components/schemas/PartyInfo'
+        attachments:
+          $ref: '#/components/schemas/AttachmentList'
+
+
+    MessageDataWhatsappAccountInfo:
+      type: object
+      required:
+        - full_name
+        - email
+        - phone
+      properties:
+        full_name:
+          type: string
+          example: Agent Brown
+        email:
+          type: string
+          example: agent-brown@example.com
+        phone:
+          type: string
+          example: "+123456789"
+
+    MessageDataChatInfo:
+      type: object
+      required:
+        - full_name
+        - chat_url
+        - chat_id
+        - is_group
+        - phone
+      properties:
+        full_name:
+          type: string
+          example: Agent Smith
+        chat_url:
+          type: string
+          example: https://app.timelines.ai/chat/123456/messages/
+        chat_id:
+          type: integer
+          example: 123456
+        is_group:
+          type: bool
+          example: false
+        phone:
+          type: string
+          example: "+123456789"
+        responsible_name:
+          type: string
+          example: Agent Brown
+        responsible_email:
+          type: string
+          example: agent-brown@example.com
+
+    ChatDataWhatsappAccountInfo:
+      type: object
+      required:
+        - id
+        - phone
+        - connected_on
+        - status
+        - account_name
+        - owner_email
+        - owner_name
+      properties:
+        id:
+          type: string
+          example: 123456789@s.whatsapp.net
+        phone:
+          type: string
+          example: "+123456789"
+        connected_on:
+          type: string
+          example: 2024-01-08 10:35:18 +0200
+        disconnected_on:
+          type: string
+          example: 2024-01-08 10:35:18 +0200
+        status:
+          type: string
+          example: active
+        account_name:
+          type: string
+          example: Some account
+        owner_name:
+          type: string
+          example: Agent Smith
+        owner_email:
+          type: string
+          example: agent-smith@example.com
+
+
+    ChatDataInfo:
+      type: object
+      required:
+        - id
+        - name
+        - phone
+        - jid
+        - is_group
+        - closed
+        - read
+        - labels
+        - unattended_customer
+        - chatgpt_autoresponse_enabled
+        - whatsapp_account_id
+        - chat_url
+        - created_timestamp
+      properties:
+        id:
+          type: integer
+          example: 123456
+        name:
+          type: string
+          example: John Smith
+        phone:
+          type: string
+          example: "+123456789"
+        jid:
+          type: string
+          example: "123456789@s.whatsapp.net"
+        is_group:
+          type: boolean
+          example: false
+        closed:
+          type: boolean
+          example: false
+        read:
+          type: boolean
+          example: false
+        labels:
+          type: array
+          items:
+            type: string
+        unattended_customer:
+          type: boolean
+          example: false
+        chatgpt_autoresponse_enabled:
+          type: boolean
+          example: false
+        whatsapp_account_id:
+          type: string
+          example: 123456789@s.whatsapp.net
+        chat_url:
+          type: string
+          example: https://app.timelines.ai/chat/123456/messages/
+        created_timestamp:
+          type: string
+          example: 2024-01-08 10:35:18 +0200
+        last_message_uid:
+          type: string
+          example: afa9d4dd-978d-4a14-aa1b-bd65c272e645
+        last_message_timestamp:
+          type: string
+          example: 2024-01-08 10:35:18 +0200
+        responsible_name:
+          type: string
+          example: Agent Brown
+        responsible_email:
+          type: string
+          example: agent-brown@example.com
+        previous_responsible_name:
+          type: string
+          example: Agent Jones
+        previous_responsible_email:
+          type: string
+          example: agent-jones@example.com

@@ -1,0 +1,445 @@
+openapi: 3.1.0
+info:
+  title: Partner Webhook API
+  version: 1.0.0
+  description: 'Partner webhooks deliver near real-time notifications about key workspace
+    and WhatsApp events. These events are emitted by TimelinesAI to partner-managed
+    webhook endpoints whenever important utilization thresholds are crossed or account
+    state changes.
+    Webhook requests are sent as HTTP POST with a JSON body to the Partner-configured
+    webhook_url. Each delivery includes the custom headers X-TL-Partner-Id and X-TL-Signature.
+    The signature is a JSON Web Token (JWT) token that contains the partner_id, nbf (not before),
+    and exp (expiration) fields. using the partner''s shared secret and can be used to verify
+    authenticity and integrity.
+
+    Emitted only for workspaces owned by the partner.'
+webhooks:
+  workspace:seats_full:
+    post:
+      parameters:
+        - $ref: '#/components/parameters/X-TL-Partner-Id'
+        - $ref: '#/components/parameters/X-TL-Signature'
+      operationId: SeatsFull
+      summary: Triggered when all purchased seats in a workspace are utilized (no available seats remain).
+      tags:
+        - workspaces
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PartnerAPIWhSeatsFull'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+  workspace:quota_near_full:messaging:
+    post:
+      parameters:
+        - $ref: '#/components/parameters/X-TL-Partner-Id'
+        - $ref: '#/components/parameters/X-TL-Signature'
+      operationId: MessagingNearFull
+      summary: Triggered when the messaging quota for a workspace reaches or exceeds
+        90 percent utilization within the current billing period.
+      tags:
+        - workspaces
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PartnerAPIWhMessaging'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+  workspace:quota_full:messaging:
+    post:
+      parameters:
+        - $ref: '#/components/parameters/X-TL-Partner-Id'
+        - $ref: '#/components/parameters/X-TL-Signature'
+      operationId: MessagingFull
+      summary: Triggered when the messaging quota for a workspace reaches or exceeds
+        100 percent utilization within the current billing period.
+      tags:
+        - workspaces
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PartnerAPIWhMessaging'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+  workspace:quota_full:transactions:
+    post:
+      parameters:
+        - $ref: '#/components/parameters/X-TL-Partner-Id'
+        - $ref: '#/components/parameters/X-TL-Signature'
+      operationId: TransactionsFull
+      summary: Triggered when the transactions quota of a workspace has been fully utilized.
+      tags:
+        - workspaces
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PartnerAPIWhTransactions'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+  workspace:quota_full:api_calls:
+    post:
+      parameters:
+        - $ref: '#/components/parameters/X-TL-Partner-Id'
+        - $ref: '#/components/parameters/X-TL-Signature'
+      operationId: ApiCallsFull
+      summary: Triggered when the Public API calls quota for a workspace reaches or
+        exceeds 100 percent utilization within the current billing period.
+      tags:
+        - workspaces
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PartnerAPIWhPublicApi'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+  whatsapp_account:connected:
+    post:
+      parameters:
+        - $ref: '#/components/parameters/X-TL-Partner-Id'
+        - $ref: '#/components/parameters/X-TL-Signature'
+      operationId: AccountConnected
+      summary: Triggered when a WhatsApp account is successfully connected for a workspace user.
+      tags:
+        - whatsapp_accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PartnerAPIWhWhatsappAccount'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+  whatsapp_account:disconnected:
+    post:
+      parameters:
+        - $ref: '#/components/parameters/X-TL-Partner-Id'
+        - $ref: '#/components/parameters/X-TL-Signature'
+      operationId: AccountDisconnected
+      summary: Triggered when a WhatsApp account is successfully disconnected for a workspace user.
+      tags:
+        - whatsapp_accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PartnerAPIWhWhatsappAccount'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+  api_token:rotated:
+    post:
+      parameters:
+        - $ref: '#/components/parameters/X-TL-Partner-Id'
+        - $ref: '#/components/parameters/X-TL-Signature'
+      operationId: PublicApiTokenRotated
+      summary: Triggered when a workspace Public API token is rotated via the Partner API.
+      tags:
+        - api_tokens
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PartnerAPIWhPublicApiTokenRotated'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+components:
+  schemas:
+    PartnerAPIWhSeatsFull:
+      type: object
+      description: Webhook payload sent when all purchased seats in a workspace are
+        utilized (available seats reach zero). This event is emitted once per billing
+        period when the condition seats_utilized >= seats_purchased becomes true.
+      required:
+        - workspace_id
+        - partner_id
+        - event_type
+        - triggered_at
+        - seats_purchased
+        - seats_available
+      properties:
+        workspace_id:
+          description: Identifier of the workspace whose seat utilization reached the purchased limit.
+          type: string
+          example: my-workspace
+        event_type:
+          description: Partner webhook event name.
+          enum: 
+            - workspace:seats_full
+        partner_id:
+          description: Unique identifier of the partner that owns the workspace.
+          type: string
+          example: partner_12345
+        triggered_at:
+          description: Timestamp when the threshold condition was first met for the current billing period.
+          type: string
+          format: date-time
+          example: 2024-01-01T12:00:00Z
+        seats_purchased:
+          description: Number of seats purchased for the workspace in the current billing period.
+          type: integer
+          example: 10
+        seats_available:
+          description: Number of seats still available for assignment in the workspace.
+          type: integer
+          example: 10
+    PartnerAPIWhMessaging:
+      description: Webhook payload sent when the messaging quota for a workspace reaches
+        or exceeds 90 or 100 percent utilization within the current billing period.
+      required:
+        - workspace_id
+        - partner_id
+        - event_type
+        - triggered_at
+        - messaging_quota_total
+        - messaging_quota_used
+        - current_period_start
+        - current_period_end
+      properties:
+        workspace_id:
+          description: Identifier of the workspace whose messaging quota is nearing full utilization or reached.
+          type: string
+          example: my-workspace
+        event_type:
+          description: Partner webhook event name.
+          enum: 
+            - workspace:quota_near_full:messaging
+            - workspace:quota_full:messaging
+          example: workspace:quota_full:messaging
+        partner_id:
+          description: Unique identifier of the partner that owns the workspace.
+          type: string
+          example: partner_12345
+        triggered_at:
+          description: Timestamp when the event was triggered.
+          type: string
+          format: date-time
+          example: 2024-01-01T12:00:00Z
+        messaging_quota_total:
+          description: Total messaging quota allocated to the workspace for the current billing period.
+          type: integer
+          example: 100000
+        messaging_quota_used:
+          description: Number of messaging units consumed in the current billing period when the threshold was reached.
+          type: integer
+          example: 90000
+        utilization_pct:
+          description: "Messaging quota utilization percentage at the time of triggering,\
+            \ computed as an integer 0\u2013100."
+          type: integer
+          example: 90
+        current_period_start:
+          description: Start of the current billing period used to aggregate the utilization
+          type: string
+          format: date-time
+          example: 2024-01-01T00:00:00Z
+        current_period_end:
+          description: End of the current billing period used to aggregate the utilization
+          type: string
+          format: date-time
+          example: 2024-01-31T23:59:59Z
+      type: object
+    PartnerAPIWhTransactions:
+      required:
+        - workspace_id
+        - partner_id
+        - event_type
+        - triggered_at
+        - current_period_start
+        - current_period_end
+      properties:
+        workspace_id:
+          type: string
+          example: my-workspace
+        event_type:
+          description: Partner webhook event name.
+          enum:
+            - workspace:quota_full:transactions
+          example: workspace:quota_full:transactions
+        partner_id:
+          description: Unique identifier of the partner that owns the workspace.
+          type: string
+          example: partner_12345
+        triggered_at:
+          description: Timestamp when the event was triggered.
+          type: string
+          format: date-time
+          example: 2024-01-01T12:00:00Z
+        current_period_start:
+          description: Start of the current billing period used to aggregate the utilization
+          type: string
+          format: date-time
+          example: 2024-01-01T00:00:00Z
+        current_period_end:
+          description: End of the current billing period used to aggregate the utilization
+          type: string
+          format: date-time
+          example: 2024-01-31T23:59:59Z
+      type: object
+    PartnerAPIWhPublicApi:
+      description: Webhook payload sent when the Public API calls quota for a workspace
+        reaches or exceeds 90 or 100 percent utilization within the current billing period.
+      required:
+        - workspace_id
+        - partner_id
+        - event_type
+        - triggered_at
+        - api_calls_limit
+        - api_calls_used
+        - current_period_start
+        - current_period_end
+      properties:
+        workspace_id:
+          description: Identifier of the workspace whose Public API calls quota has
+            reached full utilization.
+          type: string
+          example: my-workspace
+        event_type:
+          description: Partner webhook event name.
+          enum:
+            - workspace:quota_full:api_calls
+          example: workspace:quota_full:api_calls
+        partner_id:
+          description: Unique identifier of the partner that owns the workspace.
+          type: string
+          example: partner_12345
+        triggered_at:
+          description: Timestamp when the event was triggered.
+          type: string
+          format: date-time
+          example: 2024-01-01T12:00:00Z
+        api_calls_limit:
+          description: Total number of Public API calls allocated to the workspace for the current billing period.
+          type: integer
+          example: 1000000
+        api_calls_used:
+          description: Number of Public API calls consumed in the current billing period when the threshold was reached.
+          type: integer
+          example: 1000000
+        current_period_start:
+          description: Start of the current billing period used to aggregate the utilization
+          type: string
+          format: date-time
+          example: 2024-01-01T00:00:00Z
+        current_period_end:
+          description: End of the current billing period used to aggregate the utilization
+          type: string
+          format: date-time
+          example: 2024-01-31T23:59:59Z
+      type: object
+
+    PartnerAPIWhWhatsappAccount:
+      description: Webhook payload sent when a WhatsApp account is successfully connected / disconnected
+        for a user in a partner-managed workspace. No event is emitted for idempotent
+        no-op operations (for example when the account is already connected / disconnected).
+      required:
+        - workspace_id
+        - partner_id
+        - event_type
+        - triggered_at
+        - whatsapp_account_id
+        - phone_number_e164
+        - user_id
+      properties:
+        workspace_id:
+          description: Identifier of the workspace where the WhatsApp account was connected / disconnected.
+          type: string
+          example: my-workspace
+        event_type:
+          description: Partner webhook event name.
+          enum:
+            - whatsapp_account:connected
+            - whatsapp_account:disconnected
+          example: whatsapp_account:disconnected
+        partner_id:
+          description: Unique identifier of the partner that owns the workspace.
+          type: string
+          example: partner_12345
+        triggered_at:
+          description: Timestamp when the event was triggered.
+          type: string
+          format: date-time
+          example: 2024-01-01T12:00:00Z
+        whatsapp_account_id:
+          description: Internal WhatsApp account identifier.
+          type: integer
+          example: 67890
+        phone_number_e164:
+          description: Phone number associated with the WhatsApp account in E.164
+          type: string
+          example: "+123456789"
+        user_id:
+          description: Identifier of the user in the workspace who owns the WhatsApp
+          type: integer
+          example: 98765
+        disconnected_at:
+          type: string
+          format: date-time
+          example: 2024-01-01T12:00:00Z
+        reason:
+          type: string
+          example: "(logged out)"
+      type: object
+    PartnerAPIWhPublicApiTokenRotated:
+      required:
+        - workspace_id
+        - partner_id
+        - event_type
+        - triggered_at
+        - rotated_at
+      properties:
+        workspace_id:
+          type: string
+          example: my-workspace
+        event_type:
+          description: Partner webhook event name.
+          enum:
+            - api_token:rotated
+          example: api_token:rotated
+        partner_id:
+          description: Unique identifier of the partner that owns the workspace.
+          type: string
+          example: partner_12345
+        triggered_at:
+          description: Timestamp when the event was triggered.
+          type: string
+          format: date-time
+          example: 2024-01-01T12:00:00Z
+        rotated_at:
+          type: string
+          format: date-time
+          example: 2024-01-01T12:00:00Z
+      type: object
+  parameters:
+    X-TL-Partner-Id:
+      name: X-TL-Partner-Id
+      in: header
+      description: The unique identifier for the partner.
+      required: true
+      schema:
+        type: string
+    X-TL-Signature:
+      name: X-TL-Signature
+      in: header
+      description: a JSON Web Token (JWT) token that contains the partner_id, nbf (not before), and exp (expiration) fields. using the partner''s shared secret and can be used to verify authenticity and integrity.
+      required: true
+      schema:
+        type: string

@@ -93,38 +93,97 @@
         ]
       },
       {
+        "tab": "Webhooks reference",
+        "groups": [
+          {
+            "group": "messages",
+            "pages": [
+              "webhook-reference/messages/triggered-when-there-is-a-new-message",
+              "webhook-reference/messages/triggered-when-a-new-outgoing-message",
+              "webhook-reference/messages/triggered-when-there-is-a-new-incoming-message"
+            ]
+          },
+          {
+            "group": "whatsapp_accounts",
+            "pages": [
+              "webhook-reference/whatsapp_accounts/triggered-when-whatsapp-account-was-reconnected",
+              "webhook-reference/whatsapp_accounts/triggered-when-whatsapp-account-was-disconnected",
+              "webhook-reference/whatsapp_accounts/triggered-when-a-whatsapp-account-message-syncing-is-suspended-for-a-reason-such-as-subscription-cancellation-or-downgrade",
+              "webhook-reference/whatsapp_accounts/triggered-when-a-whatsapp-account-message-syncing-is-resumed"
+            ]
+          },
+          {
+            "group": "chats",
+            "pages": [
+              "webhook-reference/chats/triggered-when-there-is-a-new-direct-or-group-chat",
+              "webhook-reference/chats/triggered-when-there-is-a-new-incoming-direct-chat",
+              "webhook-reference/chats/triggered-when-there-is-a-new-outgoing-direct-chat",
+              "webhook-reference/chats/triggered-when-a-chat-was-reassigned-to-a-workspace-member",
+              "webhook-reference/chats/triggered-when-a-chat-was-unassigned"
+            ]
+          }
+        ]
+      },
+      {
         "tab": "PartnerAPI reference",
-        "groups":
-[
-  {
-    "group": "workspaces",
-    "pages": [
-      "partner-api-reference/workspaces/create-a-workspace",
-      "partner-api-reference/workspaces/get-workspace-details",
-      "partner-api-reference/workspaces/update-workspace",
-      "partner-api-reference/workspaces/create-users-in-workspace"
-    ]
-  },
-  {
-    "group": "qr",
-    "pages": [
-      "partner-api-reference/qr/generate-qr-code-for-user"
-    ]
-  },
-  {
-    "group": "whatsappAccounts",
-    "pages": [
-      "partner-api-reference/whatsappaccounts/disconnect-whatsapp-account"
-    ]
-  },
-  {
-    "group": "publicAPI",
-    "pages": [
-      "partner-api-reference/publicapi/get-public-api-token",
-      "partner-api-reference/publicapi/rotate-public-api-token"
-    ]
-  }
-]
+        "groups": [
+          {
+            "group": "workspaces",
+            "pages": [
+              "partner-api-reference/workspaces/create-a-workspace",
+              "partner-api-reference/workspaces/get-workspace-details",
+              "partner-api-reference/workspaces/update-workspace",
+              "partner-api-reference/workspaces/create-users-in-workspace"
+            ]
+          },
+          {
+            "group": "qr",
+            "pages": [
+              "partner-api-reference/qr/generate-qr-code-for-user"
+            ]
+          },
+          {
+            "group": "whatsappAccounts",
+            "pages": [
+              "partner-api-reference/whatsappaccounts/disconnect-whatsapp-account"
+            ]
+          },
+          {
+            "group": "publicAPI",
+            "pages": [
+              "partner-api-reference/publicapi/get-public-api-token",
+              "partner-api-reference/publicapi/rotate-public-api-token"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "PartnerAPI webhooks reference",
+        "groups": [
+          {
+            "group": "workspaces",
+            "pages": [
+              "partner-api-webhook-reference/workspaces/triggered-when-all-purchased-seats-in-a-workspace-are-utilized-no-available-seats-remain",
+              "partner-api-webhook-reference/workspaces/triggered-when-the-messaging-quota-for-a-workspace-reaches-or-exceeds-90-percent-utilization-within-the-current-billing-period",
+              "partner-api-webhook-reference/workspaces/triggered-when-the-messaging-quota-for-a-workspace-reaches-or-exceeds-100-percent-utilization-within-the-current-billing-period",
+              "partner-api-webhook-reference/workspaces/triggered-when-the-transactions-quota-of-a-workspace-has-been-fully-utilized",
+              "partner-api-webhook-reference/workspaces/triggered-when-the-public-api-calls-quota-for-a-workspace-reaches-or-exceeds-100-percent-utilization-within-the-current-billing-period"
+            ]
+          },
+          {
+            "group": "whatsapp_accounts",
+            "pages": [
+              "partner-api-webhook-reference/whatsapp_accounts/triggered-when-a-whatsapp-account-is-successfully-connected-for-a-workspace-user",
+              "partner-api-webhook-reference/whatsapp_accounts/triggered-when-a-whatsapp-account-is-successfully-disconnected-for-a-workspace-user"
+            ]
+          },
+          {
+            "group": "api_tokens",
+            "pages": [
+              "partner-api-webhook-reference/api_tokens/triggered-when-a-workspace-public-api-token-is-rotated-via-the-partner-api"
+            ]
+          }
+        ]
       }
     ],
     "global": {
