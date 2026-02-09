@@ -7,7 +7,7 @@
     "light": "#07C983",
     "dark": "#15803D"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "/favicon.png",
   "openapi": [
     "openapi/public_api_spec.yaml",
     "openapi/webhook_spec.yaml",
