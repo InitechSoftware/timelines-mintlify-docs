@@ -1,0 +1,77 @@
+---
+title: Introduction
+description: "Welcome to the TimelinesAI API documentation"
+mode: "wide"
+---
+
+# TimelinesAI Public API
+
+The TimelinesAI API enables you to programmatically manage WhatsApp communications for your business. Build integrations, automate workflows, and connect WhatsApp to your existing systems.
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get up and running in 5 minutes
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/introduction">
+    Explore all available endpoints
+  </Card>
+  <Card title="Send Messages" icon="paper-plane" href="/guides/sending-messages">
+    Learn how to send WhatsApp messages
+  </Card>
+  <Card title="Webhooks" icon="webhook" href="/guides/webhooks">
+    Receive real-time notifications
+  </Card>
+</CardGroup>
+
+## What you can do
+
+<AccordionGroup>
+  <Accordion title="Send & Receive Messages" icon="message">
+    Send text messages, images, documents, and voice notes to any WhatsApp number. Retrieve message history and track delivery status.
+  </Accordion>
+  
+  <Accordion title="Manage Chats" icon="comments">
+    List, filter, and organize your WhatsApp conversations. Assign chats to team members, add labels, and manage chat status.
+  </Accordion>
+  
+  <Accordion title="Handle Attachments" icon="paperclip">
+    Upload files to send as attachments. Support for images, documents, audio, and more.
+  </Accordion>
+  
+  <Accordion title="Real-time Webhooks" icon="bolt">
+    Get instant notifications when messages arrive, are sent, or when chat events occur.
+  </Accordion>
+</AccordionGroup>
+
+## Key concepts
+
+| Concept | Description |
+|---------|-------------|
+| **Workspace** | Your TimelinesAI account containing all chats, messages, and connected WhatsApp accounts |
+| **Chat** | A conversation thread with a contact or group |
+| **WID** | WhatsApp ID format: `phonenumber@s.whatsapp.net` (e.g., `14155551234@s.whatsapp.net`) |
+| **JID** | Jabber ID - used for groups: `groupid@g.us` |
+| **Message UID** | Unique identifier for each message (UUID format) |
+
+## Rate limits & credits
+
+Messages sent via API consume credits from your messaging quota:
+
+| Action | Credits |
+|--------|---------|
+| Text message | 1 |
+| Message with attachment | 2 |
+| Failed message | Refunded |
+
+Messages are sent with a ~2 second delay between each to comply with WhatsApp guidelines. [Contact support](mailto:support@timelines.ai) to customize this on Business plans.
+
+## Need help?
+
+<CardGroup cols={2}>
+  <Card title="Support" icon="envelope" href="mailto:support@timelines.ai">
+    Email our support team
+  </Card>
+  <Card title="Dashboard" icon="gauge" href="https://app.timelines.ai">
+    Access your TimelinesAI workspace
+  </Card>
+</CardGroup>

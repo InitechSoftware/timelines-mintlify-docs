@@ -1,0 +1,149 @@
+---
+title: Authentication
+description: "How to authenticate with the TimelinesAI API"
+mode: "wide"
+---
+
+# Authentication
+
+The TimelinesAI API uses Bearer token authentication. Every request must include your API token in the `Authorization` header.
+
+## Getting your API token
+
+<Steps>
+  <Step title="Sign in to TimelinesAI">
+    Go to [app.timelines.ai](https://app.timelines.ai)
+  </Step>
+  <Step title="Open API settings">
+    Navigate to **Integrations** → **Public API**
+  </Step>
+  <Step title="Copy your token">
+    Your token is displayed on this page. Click **Copy** to copy it.
+  </Step>
+</Steps>
+
+## Using your token
+
+Include the token in the `Authorization` header of every request:
+
+```
+Authorization: Bearer YOUR_API_TOKEN
+```
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl -X GET "https://app.timelines.ai/integrations/api/chats" \
+  -H "Authorization: Bearer 4d2d0239-e28c-4f4a-8a4d-3a3ca40056b8"
+```
+
+```javascript JavaScript
+const response = await fetch('https://app.timelines.ai/integrations/api/chats', {
+  headers: {
+    'Authorization': 'Bearer 4d2d0239-e28c-4f4a-8a4d-3a3ca40056b8'
+  }
+});
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    'https://app.timelines.ai/integrations/api/chats',
+    headers={'Authorization': 'Bearer 4d2d0239-e28c-4f4a-8a4d-3a3ca40056b8'}
+)
+```
+
+</CodeGroup>
+
+## Token security
+
+<Warning>
+Your API token provides full access to your workspace. Treat it like a password.
+</Warning>
+
+### Best practices
+
+<AccordionGroup>
+  <Accordion title="Use environment variables" icon="lock">
+    Never hardcode tokens in your source code. Use environment variables:
+    
+    ```bash
+    export TIMELINESAI_API_TOKEN="your-token-here"
+    ```
+    
+    ```javascript
+    const token = process.env.TIMELINESAI_API_TOKEN;
+    ```
+  </Accordion>
+  
+  <Accordion title="Don't commit tokens to Git" icon="code-branch">
+    Add your environment files to `.gitignore`:
+    
+    ```
+    .env
+    .env.local
+    .env.*.local
+    ```
+  </Accordion>
+  
+  <Accordion title="Rotate tokens if compromised" icon="rotate">
+    If you suspect your token has been exposed, generate a new one immediately from the API settings page.
+  </Accordion>
+  
+  <Accordion title="Use server-side only" icon="server">
+    Never expose your API token in client-side code (browsers, mobile apps). Always make API calls from your backend server.
+  </Accordion>
+</AccordionGroup>
+
+## Error responses
+
+### 401 Unauthorized
+
+If your token is missing or invalid:
+
+```json
+{
+  "status": "error",
+  "message": "Invalid or expired token"
+}
+```
+
+**Common causes:**
+- Missing `Authorization` header
+- Token copied incorrectly (check for extra spaces)
+- Token has been regenerated
+
+### 403 Forbidden
+
+If your token is valid but lacks permission:
+
+```json
+{
+  "status": "error",
+  "message": "Access denied"
+}
+```
+
+**Common causes:**
+- Attempting to access resources from another workspace
+- Feature not available on your plan
+
+## Token scope
+
+Your API token has access to:
+
+| Resource | Access |
+|----------|--------|
+| Chats | Read & Write |
+| Messages | Read & Write |
+| Labels | Read & Write |
+| Files | Read & Write |
+| WhatsApp Accounts | Read only |
+| Webhooks | Read & Write |
+
+<Info>
+All operations are scoped to your workspace. You cannot access data from other TimelinesAI accounts.
+</Info>

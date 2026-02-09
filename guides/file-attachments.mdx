@@ -1,0 +1,121 @@
+---
+title: File Attachments
+description: "Send images, documents, and other files via WhatsApp"
+---
+
+# File Attachments
+
+Send images, documents, audio, and other files as WhatsApp messages.
+
+## Workflow
+
+Sending a file is a two-step process:
+
+<Steps>
+  <Step title="Upload the file">
+    Upload to TimelinesAI and get a `file_uid`
+  </Step>
+  <Step title="Send with the file_uid">
+    Include `file_uid` when sending your message
+  </Step>
+</Steps>
+
+## Uploading files
+
+### Option 1: Upload from URL
+
+If your file is publicly accessible:
+
+```bash
+curl -X POST "https://app.timelines.ai/integrations/api/files" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://example.com/brochure.pdf",
+    "filename": "product-brochure.pdf"
+  }'
+```
+
+Response:
+```json
+{
+  "status": "ok",
+  "data": {
+    "uid": "90d353e6-44c1-48ff-b15b-69b7721e5450",
+    "filename": "product-brochure.pdf",
+    "mime_type": "application/pdf",
+    "size": 245678
+  }
+}
+```
+
+### Option 2: Upload file directly
+
+For local files, use multipart form data:
+
+```bash
+curl -X POST "https://app.timelines.ai/integrations/api/files_upload" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -F "file=@/path/to/document.pdf" \
+  -F "filename=document.pdf"
+```
+
+## Sending files
+
+Once uploaded, use the `file_uid` to send:
+
+### File with text
+
+```bash
+curl -X POST "https://app.timelines.ai/integrations/api/messages" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phone": "+14155551234",
+    "text": "Here is the document you requested!",
+    "file_uid": "90d353e6-44c1-48ff-b15b-69b7721e5450"
+  }'
+```
+
+## Supported file types
+
+| Category | Formats | Max Size |
+|----------|---------|----------|
+| Images | JPG, PNG, GIF, WebP | 16 MB |
+| Documents | PDF, DOC, DOCX, XLS, XLSX | 100 MB |
+| Audio | MP3, OGG, OGA, AAC | 16 MB |
+| Video | MP4, 3GP | 16 MB |
+
+## Managing uploaded files
+
+### List files
+
+```bash
+curl -X GET "https://app.timelines.ai/integrations/api/files" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### Get file details
+
+```bash
+curl -X GET "https://app.timelines.ai/integrations/api/files/90d353e6-44c1-48ff-b15b-69b7721e5450" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### Delete file
+
+```bash
+curl -X DELETE "https://app.timelines.ai/integrations/api/files/90d353e6-44c1-48ff-b15b-69b7721e5450" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Send messages" icon="paper-plane" href="/guides/sending-messages">
+    More messaging options
+  </Card>
+  <Card title="Webhooks" icon="webhook" href="/guides/webhooks">
+    Get notified of incoming files
+  </Card>
+</CardGroup>

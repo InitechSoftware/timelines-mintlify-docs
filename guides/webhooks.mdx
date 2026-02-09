@@ -1,0 +1,339 @@
+---
+title: Webhooks
+description: "Receive real-time notifications for WhatsApp events"
+---
+
+# Webhooks
+
+Webhooks allow your application to receive real-time notifications when events occur in your TimelinesAI workspace—like new messages, sent messages, or chat updates.
+
+## How webhooks work
+
+<Steps>
+  <Step title="You create a webhook subscription">
+    Tell TimelinesAI which events you care about and where to send them
+  </Step>
+  <Step title="An event occurs">
+    A new message arrives, a message is sent, etc.
+  </Step>
+  <Step title="TimelinesAI sends a POST request">
+    Your endpoint receives the event data in real-time
+  </Step>
+  <Step title="Your app processes the event">
+    Respond with 2xx status within 5 seconds
+  </Step>
+</Steps>
+
+## Available events
+
+| Event | Trigger |
+|-------|---------|
+| `message:received:new` | New incoming message |
+| `message:sent:new` | Message sent successfully |
+| `chat:created` | New chat created |
+
+<Info>
+See the [full event list](https://app.timelines.ai/integrations/webhooks_v2/swagger) for all available events.
+</Info>
+
+## Creating a webhook
+
+```bash
+curl -X POST "https://app.timelines.ai/integrations/api/webhooks" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event_type": "message:received:new",
+    "url": "https://your-app.com/webhooks/timelines",
+    "enabled": true
+  }'
+```
+
+Response:
+```json
+{
+  "status": "ok",
+  "data": {
+    "id": 7654321,
+    "event_type": "message:received:new",
+    "url": "https://your-app.com/webhooks/timelines",
+    "enabled": true,
+    "errors_counter": 0
+  }
+}
+```
+
+## Webhook endpoint requirements
+
+Your endpoint must:
+
+<Check>Be publicly accessible (no localhost)</Check>
+<Check>Use HTTPS</Check>
+<Check>Respond with 2xx status within 5 seconds</Check>
+<Check>Accept POST requests with JSON body</Check>
+
+## Handling webhook events
+
+### Example: Node.js / Express
+
+```javascript
+const express = require('express');
+const app = express();
+
+app.use(express.json());
+
+app.post('/webhooks/timelines', (req, res) => {
+  const event = req.body;
+  
+  console.log('Received event:', event.event_type);
+  
+  switch (event.event_type) {
+    case 'message:received:new':
+      handleNewMessage(event.data);
+      break;
+    case 'message:sent:new':
+      handleSentMessage(event.data);
+      break;
+    default:
+      console.log('Unknown event type');
+  }
+  
+  // Always respond quickly with 200
+  res.status(200).send('OK');
+});
+
+function handleNewMessage(data) {
+  console.log(`New message from ${data.chat_name}: ${data.text}`);
+  // Your logic here: save to database, notify team, auto-reply, etc.
+}
+
+function handleSentMessage(data) {
+  console.log(`Message sent: ${data.message_uid}`);
+}
+
+app.listen(3000);
+```
+
+### Example: Python / Flask
+
+```python
+from flask import Flask, request, jsonify
+
+app = Flask(__name__)
+
+@app.route('/webhooks/timelines', methods=['POST'])
+def handle_webhook():
+    event = request.json
+    
+    print(f"Received event: {event['event_type']}")
+    
+    if event['event_type'] == 'message:received:new':
+        handle_new_message(event['data'])
+    elif event['event_type'] == 'message:sent:new':
+        handle_sent_message(event['data'])
+    
+    # Always respond quickly
+    return jsonify({'status': 'ok'}), 200
+
+def handle_new_message(data):
+    print(f"New message from {data['chat_name']}: {data.get('text', '')}")
+    # Your logic here
+
+def handle_sent_message(data):
+    print(f"Message sent: {data['message_uid']}")
+
+if __name__ == '__main__':
+    app.run(port=3000)
+```
+
+## Managing webhooks
+
+### List all webhooks
+
+```bash
+curl -X GET "https://app.timelines.ai/integrations/api/webhooks" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### Get webhook details
+
+```bash
+curl -X GET "https://app.timelines.ai/integrations/api/webhooks/7654321" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### Update webhook
+
+```bash
+# Disable webhook
+curl -X PUT "https://app.timelines.ai/integrations/api/webhooks/7654321" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "enabled": false }'
+
+# Change URL
+curl -X PUT "https://app.timelines.ai/integrations/api/webhooks/7654321" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "url": "https://new-endpoint.com/webhooks" }'
+```
+
+### Delete webhook
+
+```bash
+curl -X DELETE "https://app.timelines.ai/integrations/api/webhooks/7654321" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+## Error handling
+
+### Delivery failures
+
+If your endpoint returns a non-2xx status or times out:
+
+1. The `errors_counter` increments
+2. After several failures, TimelinesAI emails the workspace owner
+3. Webhooks are **not** automatically disabled—fix your endpoint
+
+<Warning>
+Monitor your `errors_counter` and fix issues promptly to avoid missing events.
+</Warning>
+
+### Check error count
+
+```bash
+curl -X GET "https://app.timelines.ai/integrations/api/webhooks/7654321" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Look for `errors_counter` in the response.
+
+## Best practices
+
+<AccordionGroup>
+  <Accordion title="Respond quickly" icon="bolt">
+    Process events asynchronously. Return 200 immediately, then handle the event in the background.
+    
+    ```javascript
+    app.post('/webhooks', (req, res) => {
+      // Respond immediately
+      res.status(200).send('OK');
+      
+      // Process async
+      processEventAsync(req.body);
+    });
+    ```
+  </Accordion>
+  
+  <Accordion title="Handle duplicates" icon="copy">
+    Webhooks may be delivered more than once. Use `message_uid` or event IDs to deduplicate.
+    
+    ```javascript
+    const processedEvents = new Set();
+    
+    function handleEvent(event) {
+      if (processedEvents.has(event.message_uid)) {
+        return; // Already processed
+      }
+      processedEvents.add(event.message_uid);
+      // Process event...
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Use a queue" icon="list">
+    For high volume, push events to a message queue (Redis, RabbitMQ, SQS) and process separately.
+  </Accordion>
+  
+  <Accordion title="Log everything" icon="file-lines">
+    Log incoming webhooks for debugging:
+    
+    ```javascript
+    app.post('/webhooks', (req, res) => {
+      console.log(JSON.stringify(req.body, null, 2));
+      // ...
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Testing webhooks locally
+
+Use a tunnel service to expose your local server:
+
+### ngrok
+
+```bash
+# Start your local server
+npm start  # Running on port 3000
+
+# In another terminal, create tunnel
+ngrok http 3000
+
+# Use the ngrok URL for your webhook
+# https://abc123.ngrok.io/webhooks/timelines
+```
+
+### localtunnel
+
+```bash
+npx localtunnel --port 3000
+```
+
+<Note>
+Remember to update your webhook URL to production when deploying.
+</Note>
+
+## Example: Auto-reply bot
+
+```javascript
+const express = require('express');
+const app = express();
+
+app.use(express.json());
+
+const TIMELINES_TOKEN = process.env.TIMELINES_TOKEN;
+
+app.post('/webhooks/timelines', async (req, res) => {
+  res.status(200).send('OK'); // Respond immediately
+  
+  const event = req.body;
+  
+  if (event.event_type !== 'message:received:new') return;
+  
+  const { chat_id, text } = event.data;
+  
+  // Simple keyword auto-reply
+  let reply = null;
+  
+  if (text?.toLowerCase().includes('hours')) {
+    reply = 'Our business hours are Monday-Friday, 9am-5pm EST.';
+  } else if (text?.toLowerCase().includes('pricing')) {
+    reply = 'Please visit https://timelines.ai/pricing for our plans.';
+  }
+  
+  if (reply) {
+    await fetch(`https://app.timelines.ai/integrations/api/chats/${chat_id}/messages`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${TIMELINES_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ text: reply })
+    });
+  }
+});
+
+app.listen(3000);
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Send messages" icon="paper-plane" href="/guides/sending-messages">
+    Learn to send replies
+  </Card>
+  <Card title="Manage chats" icon="comments" href="/guides/managing-chats">
+    Organize incoming conversations
+  </Card>
+</CardGroup>

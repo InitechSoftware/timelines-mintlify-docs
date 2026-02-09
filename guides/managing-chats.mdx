@@ -1,0 +1,323 @@
+---
+title: Managing Chats
+description: "Organize, filter, and manage your WhatsApp conversations"
+---
+
+# Managing Chats
+
+Learn how to list, filter, assign, and organize your WhatsApp chats programmatically.
+
+## Listing chats
+
+Get all chats in your workspace:
+
+```bash
+curl -X GET "https://app.timelines.ai/integrations/api/chats" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Response:
+```json
+{
+  "status": "ok",
+  "data": {
+    "has_more_pages": true,
+    "chats": [
+      {
+        "id": 123456,
+        "name": "John Doe",
+        "phone": "+14155551234",
+        "is_group": false,
+        "whatsapp_account_id": "15559876543@s.whatsapp.net",
+        "responsible": "agent@company.com",
+        "closed": false,
+        "read": true
+      }
+    ]
+  }
+}
+```
+
+## Filtering chats
+
+Combine filters to find specific chats. Multiple filters use AND logic.
+
+### By label
+
+Find chats with specific labels:
+
+```bash
+# Chats with "vip" OR "enterprise" label
+curl -X GET "https://app.timelines.ai/integrations/api/chats?label=vip,enterprise" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### By assigned agent
+
+```bash
+# Chats assigned to specific team member
+curl -X GET "https://app.timelines.ai/integrations/api/chats?responsible=agent@company.com" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### By read/unread status
+
+```bash
+# Unread chats only
+curl -X GET "https://app.timelines.ai/integrations/api/chats?read=false" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### By chat type
+
+```bash
+# Group chats only
+curl -X GET "https://app.timelines.ai/integrations/api/chats?group=true" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# Direct chats only
+curl -X GET "https://app.timelines.ai/integrations/api/chats?group=false" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### By name
+
+```bash
+# Chats containing "acme" in the name
+curl -X GET "https://app.timelines.ai/integrations/api/chats?name=acme" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### By date range
+
+```bash
+# Chats created after January 1, 2024
+curl -X GET "https://app.timelines.ai/integrations/api/chats?created_after=2024-01-01T00:00:00Z" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### Combined filters
+
+```bash
+# Unread VIP chats assigned to a specific agent
+curl -X GET "https://app.timelines.ai/integrations/api/chats?read=false&label=vip&responsible=agent@company.com" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+## Pagination
+
+Results are paginated with 50 chats per page.
+
+```bash
+# Get page 2
+curl -X GET "https://app.timelines.ai/integrations/api/chats?page=2" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+<Info>
+Check `has_more_pages` in the response to know if more pages exist.
+</Info>
+
+## Getting chat details
+
+Retrieve full details for a specific chat:
+
+```bash
+curl -X GET "https://app.timelines.ai/integrations/api/chats/123456" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+## Updating chats
+
+### Assign to team member
+
+```bash
+curl -X PATCH "https://app.timelines.ai/integrations/api/chats/123456" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "responsible": "agent@company.com" }'
+```
+
+### Unassign
+
+Set `responsible` to an empty string:
+
+```bash
+curl -X PATCH "https://app.timelines.ai/integrations/api/chats/123456" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "responsible": "" }'
+```
+
+### Close/reopen chat
+
+```bash
+# Close chat
+curl -X PATCH "https://app.timelines.ai/integrations/api/chats/123456" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "closed": true }'
+
+# Reopen chat
+curl -X PATCH "https://app.timelines.ai/integrations/api/chats/123456" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "closed": false }'
+```
+
+### Mark as read/unread
+
+```bash
+# Mark as read
+curl -X PATCH "https://app.timelines.ai/integrations/api/chats/123456" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "read": true }'
+```
+
+### Rename chat
+
+```bash
+curl -X PATCH "https://app.timelines.ai/integrations/api/chats/123456" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "name": "John Doe - VIP Customer" }'
+```
+
+<Warning>
+Chat names must be unique within your workspace.
+</Warning>
+
+### Enable/disable AI auto-response
+
+```bash
+curl -X PATCH "https://app.timelines.ai/integrations/api/chats/123456" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "chatgpt_autoresponse_enabled": true }'
+```
+
+## Working with labels
+
+### Get chat labels
+
+```bash
+curl -X GET "https://app.timelines.ai/integrations/api/chats/123456/labels" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### Add labels
+
+Add labels without removing existing ones:
+
+```bash
+curl -X PUT "https://app.timelines.ai/integrations/api/chats/123456/labels" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "labels": ["follow-up", "high-priority"] }'
+```
+
+### Replace labels
+
+Replace all labels with a new set:
+
+```bash
+curl -X POST "https://app.timelines.ai/integrations/api/chats/123456/labels" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "labels": ["vip", "enterprise"] }'
+```
+
+<Note>
+Labels are created automatically if they don't exist.
+</Note>
+
+## Adding notes
+
+Add internal notes visible only to your team:
+
+```bash
+curl -X POST "https://app.timelines.ai/integrations/api/chats/123456/notes" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "text": "Customer prefers email for follow-ups. Next call scheduled for Monday." }'
+```
+
+<Info>
+Notes are not sent to WhatsApp—they're internal annotations for your team.
+</Info>
+
+## Common workflows
+
+### Route new chats to agents
+
+```python
+import requests
+
+def route_chat(chat_id, labels):
+    """Assign chat to agent based on labels"""
+    
+    # Get chat labels
+    response = requests.get(
+        f'https://app.timelines.ai/integrations/api/chats/{chat_id}/labels',
+        headers={'Authorization': 'Bearer YOUR_TOKEN'}
+    )
+    chat_labels = response.json()['data']['labels']
+    
+    # Route based on labels
+    if 'enterprise' in chat_labels:
+        agent = 'senior@company.com'
+    elif 'support' in chat_labels:
+        agent = 'support@company.com'
+    else:
+        agent = 'sales@company.com'
+    
+    # Assign chat
+    requests.patch(
+        f'https://app.timelines.ai/integrations/api/chats/{chat_id}',
+        headers={
+            'Authorization': 'Bearer YOUR_TOKEN',
+            'Content-Type': 'application/json'
+        },
+        json={'responsible': agent}
+    )
+```
+
+### Close inactive chats
+
+```python
+from datetime import datetime, timedelta
+
+def close_inactive_chats(days_inactive=30):
+    """Close chats with no activity in X days"""
+    
+    cutoff = datetime.utcnow() - timedelta(days=days_inactive)
+    
+    response = requests.get(
+        f'https://app.timelines.ai/integrations/api/chats?closed=false',
+        headers={'Authorization': 'Bearer YOUR_TOKEN'}
+    )
+    
+    for chat in response.json()['data']['chats']:
+        # Check last message date (you'd need to fetch messages)
+        # If inactive, close
+        requests.patch(
+            f'https://app.timelines.ai/integrations/api/chats/{chat["id"]}',
+            headers={
+                'Authorization': 'Bearer YOUR_TOKEN',
+                'Content-Type': 'application/json'
+            },
+            json={'closed': True}
+        )
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Send messages" icon="paper-plane" href="/guides/sending-messages">
+    Send messages to your chats
+  </Card>
+  <Card title="Set up webhooks" icon="webhook" href="/guides/webhooks">
+    Get notified of new messages
+  </Card>
+</CardGroup>
