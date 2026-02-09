@@ -1,80 +1,202 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: "Send your first WhatsApp message in 5 minutes"
+mode: "wide"
 ---
 
-## Get started in three steps
+# Quickstart
 
-Get your documentation site running locally and make your first customization.
+Get started with the TimelinesAI API in just a few steps.
 
-### Step 1: Set up your local environment
+## Prerequisites
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+<Check>A TimelinesAI account with at least one connected WhatsApp number</Check>
+<Check>Basic familiarity with REST APIs</Check>
 
-### Step 2: Deploy your changes
+## Step 1: Get your API token
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+<Steps>
+  <Step title="Log in to TimelinesAI">
+    Go to [app.timelines.ai](https://app.timelines.ai) and sign in to your account.
+  </Step>
+  <Step title="Navigate to API settings">
+    Click **Integrations** → **Public API** in the left sidebar.
+  </Step>
+  <Step title="Copy your token">
+    Click **Copy** to copy your API token. Keep this secure—it provides full access to your workspace.
+  </Step>
+</Steps>
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+<Warning>
+Never share your API token publicly or commit it to version control. Use environment variables in production.
+</Warning>
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+## Step 2: Test your connection
 
-### Step 3: Go live
+Verify your token works by listing your WhatsApp accounts:
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+<CodeGroup>
+
+```bash cURL
+curl -X GET "https://app.timelines.ai/integrations/api/whatsapp_accounts" \
+  -H "Authorization: Bearer YOUR_API_TOKEN"
+```
+
+```javascript JavaScript
+const response = await fetch('https://app.timelines.ai/integrations/api/whatsapp_accounts', {
+  headers: {
+    'Authorization': 'Bearer YOUR_API_TOKEN'
+  }
+});
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    'https://app.timelines.ai/integrations/api/whatsapp_accounts',
+    headers={'Authorization': 'Bearer YOUR_API_TOKEN'}
+)
+print(response.json())
+```
+
+</CodeGroup>
+
+You should see a response like:
+
+```json
+{
+  "status": "ok",
+  "data": [
+    {
+      "id": "14155551234@s.whatsapp.net",
+      "phone": "+14155551234",
+      "name": "Business WhatsApp",
+      "connected": true
+    }
+  ]
+}
+```
+
+## Step 3: Send your first message
+
+Now send a message to a phone number:
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST "https://app.timelines.ai/integrations/api/messages" \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phone": "+14155559999",
+    "text": "Hello from TimelinesAI API! 🎉"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('https://app.timelines.ai/integrations/api/messages', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_API_TOKEN',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    phone: '+14155559999',
+    text: 'Hello from TimelinesAI API! 🎉'
+  })
+});
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    'https://app.timelines.ai/integrations/api/messages',
+    headers={
+        'Authorization': 'Bearer YOUR_API_TOKEN',
+        'Content-Type': 'application/json'
+    },
+    json={
+        'phone': '+14155559999',
+        'text': 'Hello from TimelinesAI API! 🎉'
+    }
+)
+print(response.json())
+```
+
+</CodeGroup>
+
+<Note>
+Replace `+14155559999` with a real phone number. The recipient must have WhatsApp installed.
+</Note>
+
+Success response:
+
+```json
+{
+  "status": "ok",
+  "data": {
+    "message_uid": "a5bbb005-37f2-402c-96fa-e479a2e09b02"
+  }
+}
+```
+
+<Info>
+Messages are queued and sent asynchronously. Use the `message_uid` to track delivery status.
+</Info>
+
+## Step 4: Check message status
+
+Track your message delivery:
+
+<CodeGroup>
+
+```bash cURL
+curl -X GET "https://app.timelines.ai/integrations/api/messages/a5bbb005-37f2-402c-96fa-e479a2e09b02/status_history" \
+  -H "Authorization: Bearer YOUR_API_TOKEN"
+```
+
+```javascript JavaScript
+const response = await fetch(
+  'https://app.timelines.ai/integrations/api/messages/a5bbb005-37f2-402c-96fa-e479a2e09b02/status_history',
+  {
+    headers: { 'Authorization': 'Bearer YOUR_API_TOKEN' }
+  }
+);
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    'https://app.timelines.ai/integrations/api/messages/a5bbb005-37f2-402c-96fa-e479a2e09b02/status_history',
+    headers={'Authorization': 'Bearer YOUR_API_TOKEN'}
+)
+print(response.json())
+```
+
+</CodeGroup>
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
-
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Send attachments" icon="paperclip" href="/guides/file-attachments">
+    Learn to send images and documents
+  </Card>
+  <Card title="Set up webhooks" icon="webhook" href="/guides/webhooks">
+    Receive real-time notifications
+  </Card>
+  <Card title="Manage chats" icon="comments" href="/guides/managing-chats">
+    Organize and assign conversations
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/introduction">
+    Explore all endpoints
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
