@@ -8,7 +8,13 @@
     "dark": "#15803D"
   },
   "favicon": "/favicon.png",
-  "openapi": [
+"redirects": [
+  {
+    "source": "/",
+    "destination": "/introduction"
+  }
+],
+"openapi": [
     "openapi/public_api_spec.yaml",
     "openapi/webhook_spec.yaml",
     "openapi/partner_api_spec.yaml",
