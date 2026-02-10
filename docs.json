@@ -53,46 +53,81 @@
         ]
       },
       {
-        "tab": "PublicAPI reference",
-        "groups": [
-          {
-            "group": "API documentation",
-            "pages": [
-              "public-api-reference/get-full-or-filtered-list-of-all-chats-in-the-workspace",
-              "public-api-reference/get-details-of-a-chat",
-              "public-api-reference/update-chat",
-              "public-api-reference/get-filtered-chat-history-messages-only-of-the-chat",
-              "public-api-reference/send-message-in-existing-chat",
-              "public-api-reference/post-chats-voice_message",
-              "public-api-reference/add-a-note-to-existing-chat",
-              "public-api-reference/get-the-details-of-a-message-specified-by-the-messages-uid",
-              "public-api-reference/get-the-sending-history-of-a-message-specified-by-the-messages-uid",
-              "public-api-reference/get-the-current-reactions-map-for-a-message",
-              "public-api-reference/update-reactions-for-a-message",
-              "public-api-reference/send-message-to-phone-number",
-              "public-api-reference/send-message-to-jid",
-              "public-api-reference/send-message-in-existing-chat-specified-by-chat-name",
-              "public-api-reference/list-files-uploaded-in-your-timelinesai-workspace",
-              "public-api-reference/upload-a-file-using-a-publicly-accessible-url",
-              "public-api-reference/get-details-and-temporary-download-url-for-a-specified-uploaded-file",
-              "public-api-reference/delete-the-specified-uploaded-file",
-              "public-api-reference/upload-a-file-in-x-form-encoded-http-request",
-              "public-api-reference/list-whatsapp-accounts-connected-in-your-timelinesai-workspace",
-              "public-api-reference/list-all-teammates-in-the-workspace",
-              "public-api-reference/all-current-quotas-and-utilization-stats",
-              "public-api-reference/list-webhooks",
-              "public-api-reference/create-webhook",
-              "public-api-reference/get-webhook",
-              "public-api-reference/update-webhook",
-              "public-api-reference/delete-webhook"
-            ]
-          },
-          {
-            "group": "Labels related",
-            "pages": [
-              "public-api-reference/list-labels-for-the-specified-chat",
-              "public-api-reference/adds-labels-for-the-chat",
-              "public-api-reference/replaces-labels-for-the-chat"
+         "tab": "PublicAPI reference",
+  "groups": [
+    {
+      "group": "Chats",
+      "pages": [
+        "public-api-reference/get-full-or-filtered-list-of-all-chats-in-the-workspace",
+        "public-api-reference/get-details-of-a-chat",
+        "public-api-reference/update-chat"
+      ]
+    },
+    {
+      "group": "Messages",
+      "pages": [
+        "public-api-reference/get-filtered-chat-history-messages-only-of-the-chat",
+        "public-api-reference/get-the-details-of-a-message-specified-by-the-messages-uid",
+        "public-api-reference/get-the-sending-history-of-a-message-specified-by-the-messages-uid",
+        "public-api-reference/send-message-in-existing-chat",
+        "public-api-reference/send-message-to-phone-number",
+        "public-api-reference/send-message-to-jid",
+        "public-api-reference/send-message-in-existing-chat-specified-by-chat-name",
+        "public-api-reference/post-chats-voice_message",
+        "public-api-reference/add-a-note-to-existing-chat"
+      ]
+    },
+    {
+      "group": "Reactions",
+      "pages": [
+        "public-api-reference/get-the-current-reactions-map-for-a-message",
+        "public-api-reference/update-reactions-for-a-message"
+      ]
+    },
+    {
+      "group": "Files",
+      "pages": [
+        "public-api-reference/list-files-uploaded-in-your-timelinesai-workspace",
+        "public-api-reference/upload-a-file-using-a-publicly-accessible-url",
+        "public-api-reference/upload-a-file-in-x-form-encoded-http-request",
+        "public-api-reference/get-details-and-temporary-download-url-for-a-specified-uploaded-file",
+        "public-api-reference/delete-the-specified-uploaded-file"
+      ]
+    },
+    {
+      "group": "Labels",
+      "pages": [
+        "public-api-reference/list-labels-for-the-specified-chat",
+        "public-api-reference/adds-labels-for-the-chat",
+        "public-api-reference/replaces-labels-for-the-chat"
+      ]
+    },
+    {
+      "group": "WhatsApp Accounts",
+      "pages": [
+        "public-api-reference/list-whatsapp-accounts-connected-in-your-timelinesai-workspace"
+      ]
+    },
+    {
+      "group": "Teammates",
+      "pages": [
+        "public-api-reference/list-all-teammates-in-the-workspace"
+      ]
+    },
+    {
+      "group": "Quotas & Usage",
+      "pages": [
+        "public-api-reference/all-current-quotas-and-utilization-stats"
+      ]
+    },
+    {
+      "group": "Webhooks",
+      "pages": [
+        "public-api-reference/list-webhooks",
+        "public-api-reference/create-webhook",
+        "public-api-reference/get-webhook",
+        "public-api-reference/update-webhook",
+        "public-api-reference/delete-webhook"
             ]
           }
         ]
