@@ -1,6 +1,6 @@
 openapi: 3.0.3
 tags:
-  - name: workspaces
+  - name: Workspaces
   - name: users
   - name: whatsappAccounts
   - name: qr
@@ -20,12 +20,12 @@ servers:
 security:
 - bearerAuth: []
 paths:
-  /workspaces:
+  /Workspaces:
     post:
       summary: Create a workspace
       operationId: workspaceCreate
       tags:
-        - workspaces
+        - Workspaces
       parameters:
         - $ref: '#/components/parameters/X-TL-Partner-Id'
       requestBody:
