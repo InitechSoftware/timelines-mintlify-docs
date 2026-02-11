@@ -59,7 +59,7 @@
         ]
       },
       {
-         "tab": "PublicAPI reference",
+         "tab": "PublicAPI",
   "groups": [
     {
       "group": "Chats",
@@ -139,7 +139,7 @@
         ]
       },
       {
-        "tab": "Webhooks reference",
+        "tab": "PublicAPI Webhooks",
         "groups": [
           {
             "group": "messages",
@@ -171,7 +171,7 @@
         ]
       },
       {
-        "tab": "PartnerAPI reference",
+        "tab": "PartnerAPI",
         "groups": [
           {
             "group": "workspaces",
@@ -204,7 +204,7 @@
         ]
       },
       {
-        "tab": "PartnerAPI webhooks reference",
+        "tab": "PartnerAPI Webhooks",
         "groups": [
           {
             "group": "workspaces",
