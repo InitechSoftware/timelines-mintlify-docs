@@ -1,0 +1,116 @@
+---
+title: "PartnerAPI Webhooks Overview"
+description: "Receive real-time notifications for workspace, account, and quota events across your managed workspaces"
+mode: "wide"
+---
+
+# PartnerAPI Webhooks
+
+PartnerAPI Webhooks notify your platform in real-time when important events occur across the workspaces you manage. Monitor quota usage, track WhatsApp account connections, and stay informed about API token changes — all without polling.
+
+These webhooks are separate from the PublicAPI Webhooks. While PublicAPI Webhooks cover message-level and chat-level events within a single workspace, PartnerAPI Webhooks focus on workspace-level operational events relevant to platform administrators and resellers.
+
+## Available events
+
+### Workspace quota events
+
+Get alerted when your managed workspaces approach or hit their usage limits. These events enable proactive billing management and prevent service interruptions.
+
+| Event | Trigger | Description |
+|-------|---------|-------------|
+| Seats fully utilized | All seats in use | Every purchased seat in the workspace is occupied — no more users can be added |
+| Messaging quota at 90% | Nearing message limit | The workspace has used 90% or more of its messaging quota for the current billing period |
+| Messaging quota at 100% | Message limit reached | The workspace has exhausted its messaging quota — new messages will be blocked |
+| Transactions quota exhausted | Transaction limit reached | All available transactions for the workspace have been consumed |
+| API calls quota at 100% | API call limit reached | The workspace has used 100% of its Public API call quota for the current billing period |
+
+### WhatsApp account events
+
+Track when WhatsApp numbers are connected or disconnected across your managed workspaces.
+
+| Event | Trigger | Description |
+|-------|---------|-------------|
+| Account connected | WhatsApp linked | A user successfully connected a WhatsApp account by scanning a QR code |
+| Account disconnected | WhatsApp unlinked | A WhatsApp account was disconnected (manually or automatically) |
+
+### API token events
+
+Monitor security-sensitive changes to Public API tokens.
+
+| Event | Trigger | Description |
+|-------|---------|-------------|
+| Token rotated | Public API token changed | A workspace's Public API token was rotated via the Partner API |
+
+## Use case examples
+
+<AccordionGroup>
+  <Accordion title="Proactive quota management" icon="gauge-high">
+    Prevent service disruptions by acting on quota warnings before limits are reached.
+
+    1. Subscribe to the 90% messaging quota event
+    2. When triggered, notify your customer that they are approaching their limit
+    3. Offer an upsell or auto-upgrade their plan
+    4. If the 100% event fires, display a warning in your UI and queue messages for later
+  </Accordion>
+
+  <Accordion title="Automated billing & usage tracking" icon="receipt">
+    Keep your billing system in sync with actual resource consumption.
+
+    1. Subscribe to all quota events (seats, messaging, transactions, API calls)
+    2. Log each event with the workspace ID and timestamp
+    3. Trigger billing adjustments, overage charges, or plan upgrades automatically
+    4. Generate usage reports for your customers
+  </Accordion>
+
+  <Accordion title="Onboarding status tracking" icon="list-check">
+    Know instantly when a customer's WhatsApp account is ready.
+
+    1. After generating a QR code via the Partner API, subscribe to the `account connected` event
+    2. When the event fires, update your onboarding flow to mark WhatsApp as connected
+    3. Trigger welcome messages or next-step guides for the customer
+    4. Monitor for disconnections and prompt users to reconnect
+  </Accordion>
+
+  <Accordion title="Security monitoring" icon="shield-halved">
+    Track API token changes and account access across all workspaces.
+
+    1. Subscribe to the `token rotated` event to audit all token changes
+    2. Log which workspaces had tokens rotated and when
+    3. Subscribe to account disconnection events to detect unexpected access changes
+    4. Alert your security team if a workspace loses its WhatsApp connection unexpectedly
+  </Accordion>
+</AccordionGroup>
+
+## Payload example
+
+When a workspace's messaging quota reaches 90%, your endpoint receives:
+
+```json
+{
+  "event_type": "workspace:messaging_quota:90",
+  "data": {
+    "workspace_id": 12345,
+    "quota_limit": 10000,
+    "quota_used": 9150,
+    "billing_period_end": "2024-02-01T00:00:00Z"
+  }
+}
+```
+
+## Best practices
+
+- **Act on 90% warnings** — don't wait for the 100% event. Proactively notify customers or auto-scale their plans.
+- **Log all events** — maintain an audit trail of all webhook events for billing reconciliation and support troubleshooting.
+- **Monitor account connectivity** — WhatsApp disconnections can disrupt your customer's business. React to disconnection events quickly.
+- **Secure token rotation** — when you receive a `token rotated` event, update any cached tokens in your system immediately.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Partner API" icon="handshake" href="/partner-api-reference/overview">
+    Manage workspaces, users, and accounts
+  </Card>
+  <Card title="PublicAPI Webhooks" icon="webhook" href="/webhook-reference/overview">
+    Message and chat-level event notifications
+  </Card>
+</CardGroup>

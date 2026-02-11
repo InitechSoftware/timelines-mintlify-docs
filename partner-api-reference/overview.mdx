@@ -1,0 +1,117 @@
+---
+title: "Partner API Overview"
+description: "Programmatically manage TimelinesAI workspaces, users, and WhatsApp connections for your platform"
+mode: "wide"
+---
+
+# Partner API
+
+The TimelinesAI Partner API is designed for platform integrators, resellers, and SaaS providers who need to provision and manage multiple TimelinesAI workspaces on behalf of their customers. It lets you automate workspace creation, user management, WhatsApp account onboarding, and API token lifecycle — all without requiring your customers to interact with the TimelinesAI dashboard directly.
+
+<Info>
+  The Partner API uses a separate authentication token from the Public API. Contact [support@timelines.ai](mailto:support@timelines.ai) to obtain Partner API credentials.
+</Info>
+
+## Base URL
+
+```
+https://app.timelines.ai/integrations/partner/api/v1
+```
+
+## Capabilities
+
+<CardGroup cols={2}>
+  <Card title="Workspaces" icon="building" href="/partner-api-reference/workspaces/create-a-workspace">
+    Create, configure, and manage customer workspaces. Set up subscription plans and workspace settings programmatically.
+  </Card>
+  <Card title="User Management" icon="users" href="/partner-api-reference/workspaces/create-users-in-workspace">
+    Add users to workspaces so your customers' teams can access their WhatsApp communications.
+  </Card>
+  <Card title="QR Code Onboarding" icon="qrcode" href="/partner-api-reference/qr/generate-qr-code-for-user">
+    Generate QR codes for users to connect their WhatsApp accounts by scanning — no manual setup needed.
+  </Card>
+  <Card title="WhatsApp Accounts" icon="phone" href="/partner-api-reference/whatsappaccounts/disconnect-whatsapp-account">
+    Manage connected WhatsApp accounts, including disconnecting numbers when needed.
+  </Card>
+  <Card title="API Token Management" icon="key" href="/partner-api-reference/publicapi/get-public-api-token">
+    Retrieve and rotate Public API tokens for any workspace you manage, enabling programmatic access to the Public API on behalf of your customers.
+  </Card>
+</CardGroup>
+
+## Available endpoints
+
+| Group                 | Endpoints                                                                                | Description                                              |
+| --------------------- | ---------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| **Workspaces**        | `POST /workspaces`, `GET /workspaces/{id}`, `PATCH /workspaces/{id}`                     | Create workspaces, get details, and update configuration |
+| **Users**             | `POST /workspaces/{id}/users`                                                            | Add users to a workspace                                 |
+| **QR Codes**          | `POST /qr_code`                                                                          | Generate WhatsApp connection QR codes                    |
+| **WhatsApp Accounts** | `DELETE /whatsapp_accounts/{id}`                                                         | Disconnect a WhatsApp account                            |
+| **Public API Tokens** | `GET /workspaces/{id}/public_api_token`, `POST /workspaces/{id}/public_api_token/rotate` | Retrieve or rotate a workspace's Public API token        |
+
+## Use case examples
+
+<AccordionGroup>
+  <Accordion title="White-label WhatsApp platform" icon="palette">
+    Embed WhatsApp messaging into your own SaaS product without exposing TimelinesAI to your end users.
+
+    1. Use `POST /workspaces` to create a workspace when a customer signs up
+    2. Add the customer's team members with `POST /workspaces/{id}/users`
+    3. Generate a QR code with `POST /qr_code` for the customer to connect their WhatsApp
+    4. Retrieve their Public API token with `GET /workspaces/{id}/public_api_token`
+    5. Use the Public API token in your backend to send/receive messages on their behalf
+  </Accordion>
+  <Accordion title="Managed service provider" icon="server">
+    Offer WhatsApp as a service to multiple clients, managing everything from a single integration.
+
+    1. Provision workspaces per client with `POST /workspaces`
+    2. Configure workspace settings with `PATCH /workspaces/{id}`
+    3. Onboard client WhatsApp numbers via QR codes
+    4. Monitor workspace health using Partner API Webhooks
+    5. Rotate API tokens periodically for security with `POST /workspaces/{id}/public_api_token/rotate`
+  </Accordion>
+  <Accordion title="Automated customer onboarding" icon="wand-magic-sparkles">
+    Streamline the setup process so new customers can start using WhatsApp within minutes.
+
+    1. Create workspace automatically when customer completes your sign-up flow
+    2. Add the customer as a user in their workspace
+    3. Present a QR code in your UI for instant WhatsApp connection
+    4. Subscribe to Partner API Webhooks to detect when the account connects
+    5. Automatically begin message syncing and enable Public API access
+  </Accordion>
+  <Accordion title="Security & compliance management" icon="shield">
+    Maintain control over API access across all managed workspaces.
+
+    1. Regularly rotate Public API tokens with `POST /workspaces/{id}/public_api_token/rotate`
+    2. Subscribe to the `api_token:rotated` webhook to track token changes
+    3. Disconnect compromised WhatsApp accounts with `DELETE /whatsapp_accounts/{id}`
+    4. Monitor quota usage via Partner API Webhooks for billing and compliance alerts
+  </Accordion>
+</AccordionGroup>
+
+## Typical integration flow
+
+<Steps>
+  <Step title="Create a workspace">
+    `POST /workspaces` — provision a new workspace for your customer
+  </Step>
+  <Step title="Add users">
+    `POST /workspaces/{id}/users` — add team members who need access
+  </Step>
+  <Step title="Connect WhatsApp">
+    `POST /qr_code` — generate a QR code for the user to scan and connect their WhatsApp number
+  </Step>
+  <Step title="Enable API access">
+    `GET /workspaces/{id}/public_api_token` — retrieve the workspace's Public API token to start sending and receiving messages
+  </Step>
+</Steps>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Partner API Webhooks" icon="webhook" href="/partner-api-webhook-reference/overview">
+    Get real-time notifications for workspace events
+  </Card>
+  <Card title="Public API" icon="code" href="/public-api-reference/overview">
+    Learn about the Public API for message management
+  </Card>
+</CardGroup>

@@ -1,0 +1,164 @@
+---
+title: "PublicAPI Webhooks Overview"
+description: "Receive real-time notifications for WhatsApp events in your workspace"
+mode: "wide"
+---
+
+# PublicAPI Webhooks
+
+PublicAPI Webhooks deliver real-time notifications to your application when events occur in your TimelinesAI workspace. Instead of polling the API for changes, your server receives instant HTTP POST callbacks whenever messages arrive, chats are created, accounts change status, and more.
+
+## How it works
+
+<Steps>
+  <Step title="Register a webhook">
+    Use `POST /webhooks` to subscribe to an event type and provide your endpoint URL
+  </Step>
+  <Step title="An event occurs">
+    A new message arrives, a chat is created, or an account status changes
+  </Step>
+  <Step title="You receive a POST request">
+    TimelinesAI sends the event payload to your endpoint in real-time
+  </Step>
+  <Step title="Acknowledge receipt">
+    Your server responds with a 2xx status within 5 seconds
+  </Step>
+</Steps>
+
+## Available events
+
+### Message events
+
+Real-time notifications for all message activity in your workspace.
+
+| Event | Trigger | Description |
+|-------|---------|-------------|
+| `message:new` | Any new message | Fires for both incoming and outgoing messages |
+| `message:received:new` | Incoming message | A customer or contact sends you a message |
+| `message:sent:new` | Outgoing message | A message you sent is processed |
+
+### Chat events
+
+Track conversation lifecycle and assignment changes.
+
+| Event | Trigger | Description |
+|-------|---------|-------------|
+| `chat:created` | New chat (any) | A new direct or group chat appears |
+| `chat:received:created` | New incoming chat | A contact initiates a conversation with you |
+| `chat:sent:created` | New outgoing chat | You start a new conversation |
+| `chat:assigned` | Chat reassigned | A chat is assigned to a team member |
+| `chat:unassigned` | Chat unassigned | A chat's assignment is removed |
+
+### WhatsApp account events
+
+Monitor the connection status of your WhatsApp numbers.
+
+| Event | Trigger | Description |
+|-------|---------|-------------|
+| Account reconnected | WhatsApp reconnects | A previously disconnected account comes back online |
+| Account disconnected | WhatsApp disconnects | An account loses its connection |
+| Syncing suspended | Syncing paused | Message syncing stops (e.g., subscription change) |
+| Syncing resumed | Syncing restarted | Message syncing resumes after suspension |
+
+## Use case examples
+
+<AccordionGroup>
+  <Accordion title="Auto-reply chatbot" icon="robot">
+    Build an automated responder that handles common questions instantly.
+
+    1. Subscribe to `message:received:new`
+    2. Parse the incoming message text for keywords
+    3. Send an appropriate reply using `POST /chats/{id}/messages`
+    4. Escalate complex queries by assigning the chat to a human agent
+  </Accordion>
+
+  <Accordion title="Real-time CRM sync" icon="arrows-rotate">
+    Keep your CRM updated the moment a conversation happens.
+
+    1. Subscribe to `message:received:new` and `chat:created`
+    2. On new chat — create a lead/contact in your CRM
+    3. On new message — log the interaction as an activity
+    4. Use chat assignment events to sync agent ownership
+  </Accordion>
+
+  <Accordion title="Team notification system" icon="bell">
+    Alert your team in Slack, Teams, or email when important events happen.
+
+    1. Subscribe to `message:received:new` and `chat:assigned`
+    2. Filter events by label or content keywords
+    3. Forward the notification to Slack, Teams, or a custom dashboard
+    4. Monitor WhatsApp account events to alert admins about disconnections
+  </Accordion>
+
+  <Accordion title="Delivery tracking & analytics" icon="chart-line">
+    Track message delivery rates and response times.
+
+    1. Subscribe to `message:sent:new` to track outgoing deliveries
+    2. Subscribe to `message:received:new` to measure response times
+    3. Aggregate data to build delivery rate dashboards
+    4. Alert on anomalies like high failure rates or unusual activity
+  </Accordion>
+</AccordionGroup>
+
+## Webhook payload example
+
+When a new message arrives, your endpoint receives a payload like:
+
+```json
+{
+  "event_type": "message:received:new",
+  "data": {
+    "chat_id": 123456,
+    "chat_name": "John Doe",
+    "message_uid": "a5bbb005-37f2-402c-96fa-e479a2e09b02",
+    "text": "Hi, I'd like to know more about your services",
+    "timestamp": "2024-01-15T10:30:00Z",
+    "whatsapp_account_id": "15551234567@s.whatsapp.net"
+  }
+}
+```
+
+## Endpoint requirements
+
+Your webhook endpoint must:
+
+<Check>Be publicly accessible (no localhost in production)</Check>
+<Check>Use HTTPS</Check>
+<Check>Respond with a 2xx status within 5 seconds</Check>
+<Check>Accept POST requests with JSON body</Check>
+
+## Best practices
+
+- **Respond immediately** — return 200 first, then process the event asynchronously
+- **Handle duplicates** — use `message_uid` to deduplicate events that may be delivered more than once
+- **Monitor errors** — check `errors_counter` on your webhooks to catch delivery failures early
+- **Use a queue** — for high-volume workspaces, push events to a message queue (Redis, SQS, RabbitMQ) and process separately
+
+<Warning>
+If your endpoint consistently fails, TimelinesAI will notify the workspace owner via email. Fix endpoint issues promptly to avoid missing events.
+</Warning>
+
+## Managing webhooks
+
+Webhook subscriptions are managed via the Public API:
+
+| Action | Endpoint |
+|--------|----------|
+| List all | `GET /webhooks` |
+| Create | `POST /webhooks` |
+| Get details | `GET /webhooks/{id}` |
+| Update | `PUT /webhooks/{id}` |
+| Delete | `DELETE /webhooks/{id}` |
+
+See the [Webhooks guide](/guides/webhooks) for setup instructions and code examples.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Webhooks guide" icon="book" href="/guides/webhooks">
+    Step-by-step setup with code examples
+  </Card>
+  <Card title="Public API" icon="code" href="/public-api-reference/overview">
+    Explore all API endpoints
+  </Card>
+</CardGroup>

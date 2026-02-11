@@ -1,0 +1,128 @@
+---
+title: "Public API Overview"
+description: "Manage WhatsApp communications programmatically with the TimelinesAI Public API"
+mode: "wide"
+---
+
+# Public API
+
+The TimelinesAI Public API gives you full control over your WhatsApp workspace. Send and receive messages, manage conversations, handle file attachments, organize chats with labels, and set up real-time webhooks — all through a simple REST API.
+
+## Base URL
+
+```
+https://app.timelines.ai/integrations/api
+```
+
+All requests require Bearer token authentication. See [Authentication](/authentication) for details.
+
+## Capabilities
+
+<CardGroup cols={2}>
+  <Card title="Messages" icon="paper-plane" href="/public-api-reference/send-message-to-phone-number">
+    Send text messages, attachments, and voice notes to any WhatsApp number. Track delivery status from queued through read.
+  </Card>
+  <Card title="Chats" icon="comments" href="/public-api-reference/get-full-or-filtered-list-of-all-chats-in-the-workspace">
+    List, filter, and update conversations. Assign chats to team members, close/reopen, and manage read status.
+  </Card>
+  <Card title="Files" icon="paperclip" href="/public-api-reference/upload-a-file-using-a-publicly-accessible-url">
+    Upload files from URLs or directly. Send images, PDFs, audio, and video as WhatsApp attachments.
+  </Card>
+  <Card title="Labels" icon="tags" href="/public-api-reference/list-labels-for-the-specified-chat">
+    Organize chats with labels. Add, replace, or list labels to categorize and filter conversations.
+  </Card>
+  <Card title="Reactions" icon="face-smile" href="/public-api-reference/get-the-current-reactions-map-for-a-message">
+    Get and update emoji reactions on messages.
+  </Card>
+  <Card title="Webhooks" icon="webhook" href="/public-api-reference/create-webhook">
+    Subscribe to real-time events like new messages, sent messages, and chat updates.
+  </Card>
+  <Card title="WhatsApp Accounts" icon="phone" href="/public-api-reference/list-whatsapp-accounts-connected-in-your-timelinesai-workspace">
+    List all connected WhatsApp numbers in your workspace.
+  </Card>
+  <Card title="Quotas & Usage" icon="chart-bar" href="/public-api-reference/all-current-quotas-and-utilization-stats">
+    Monitor your messaging quota, API call limits, and current utilization.
+  </Card>
+</CardGroup>
+
+## Available endpoints
+
+| Group | Endpoints | Description |
+|-------|-----------|-------------|
+| **Chats** | `GET /chats`, `GET /chats/{id}`, `PATCH /chats/{id}` | List, get details, and update chats |
+| **Messages** | `POST /messages`, `POST /chats/{id}/messages`, `GET /chats/{id}/messages`, and more | Send messages by phone, chat ID, JID, or chat name. Retrieve history and status. |
+| **Reactions** | `GET /messages/{uid}/reactions`, `PUT /messages/{uid}/reactions` | Read and update message reactions |
+| **Files** | `GET /files`, `POST /files`, `POST /files_upload`, `GET /files/{uid}`, `DELETE /files/{uid}` | Upload, list, download, and delete files |
+| **Labels** | `GET /chats/{id}/labels`, `PUT /chats/{id}/labels`, `POST /chats/{id}/labels` | List, add, and replace chat labels |
+| **WhatsApp Accounts** | `GET /whatsapp_accounts` | List connected WhatsApp numbers |
+| **Teammates** | `GET /teammates` | List workspace team members |
+| **Quotas & Usage** | `GET /quotas` | Check quota limits and current usage |
+| **Webhooks** | `GET /webhooks`, `POST /webhooks`, `GET/PUT/DELETE /webhooks/{id}` | Manage webhook subscriptions |
+
+## Use case examples
+
+<AccordionGroup>
+  <Accordion title="CRM integration" icon="address-book">
+    Sync WhatsApp conversations with your CRM. When a new lead messages you, automatically create a contact in your CRM and assign the chat to the right sales rep.
+
+    1. Set up a webhook for `message:received:new`
+    2. On new message, check if the phone number exists in your CRM
+    3. Create or update the CRM contact
+    4. Use `PATCH /chats/{id}` to assign the chat to the appropriate agent
+    5. Add a label like `crm-synced` for tracking
+  </Accordion>
+
+  <Accordion title="Automated notifications" icon="bell">
+    Send order updates, appointment reminders, or shipping notifications directly to WhatsApp.
+
+    1. Use `POST /messages` with the customer's phone number
+    2. Include relevant details in the message text
+    3. Attach documents (invoices, receipts) using the file upload endpoints
+    4. Track delivery with `GET /messages/{uid}/status_history`
+  </Accordion>
+
+  <Accordion title="Support ticket system" icon="headset">
+    Route incoming WhatsApp messages to your support team based on content or labels.
+
+    1. Listen for new messages via webhooks
+    2. Parse the message content to determine the category
+    3. Add appropriate labels with `PUT /chats/{id}/labels`
+    4. Assign to the right agent with `PATCH /chats/{id}`
+    5. Add internal notes with `POST /chats/{id}/notes` for context
+  </Accordion>
+
+  <Accordion title="Bulk outreach campaigns" icon="bullhorn">
+    Send personalized messages to a list of contacts for marketing or onboarding campaigns.
+
+    1. Iterate over your contact list
+    2. Use `POST /messages` for each recipient with personalized text
+    3. Auto-apply labels (e.g., `campaign-jan-2025`) when sending
+    4. Respect the ~2 second rate limit between messages
+    5. Monitor delivery status and quota usage via `GET /quotas`
+  </Accordion>
+</AccordionGroup>
+
+## Rate limits & credits
+
+| Action | Credits |
+|--------|---------|
+| Text message | 1 |
+| Message with attachment | 2 |
+| Failed message | Refunded |
+
+Messages are sent with a ~2 second delay between each to comply with WhatsApp guidelines.
+
+<Info>
+Check your current usage anytime with `GET /quotas`. [Contact support](mailto:support@timelines.ai) to discuss higher limits on Business plans.
+</Info>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Send your first message in 5 minutes
+  </Card>
+  <Card title="Authentication" icon="lock" href="/authentication">
+    Set up your API token
+  </Card>
+</CardGroup>

@@ -62,6 +62,12 @@
          "tab": "PublicAPI",
   "groups": [
     {
+      "group": "Overview",
+      "pages": [
+        "public-api-reference/overview"
+      ]
+    },
+    {
       "group": "Chats",
       "pages": [
         "public-api-reference/get-full-or-filtered-list-of-all-chats-in-the-workspace",
@@ -142,6 +148,12 @@
         "tab": "PublicAPI Webhooks",
         "groups": [
           {
+            "group": "Overview",
+            "pages": [
+              "webhook-reference/overview"
+            ]
+          },
+          {
             "group": "messages",
             "pages": [
               "webhook-reference/messages/triggered-when-a-new-outgoing-message",
@@ -173,6 +185,12 @@
       {
         "tab": "PartnerAPI",
         "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "partner-api-reference/overview"
+            ]
+          },
           {
             "group": "workspaces",
             "pages": [
@@ -206,6 +224,12 @@
       {
         "tab": "PartnerAPI Webhooks",
         "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "partner-api-webhook-reference/overview"
+            ]
+          },
           {
             "group": "workspaces",
             "pages": [
