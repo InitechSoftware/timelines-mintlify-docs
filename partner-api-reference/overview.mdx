@@ -6,47 +6,172 @@ mode: "wide"
 
 # Partner API
 
-The TimelinesAI Partner API is designed for platform integrators, resellers, and SaaS providers who need to provision and manage multiple TimelinesAI workspaces on behalf of their customers. It lets you automate workspace creation, user management, WhatsApp account onboarding, and API token lifecycle — all without requiring your customers to interact with the TimelinesAI dashboard directly.
+The TimelinesAI Partner API enables B2B partners to programmatically provision and manage workspaces, users, and WhatsApp account connections. This server-to-server API allows partners to integrate TimelinesAI capabilities directly into their own platforms without requiring end-users to interact with the TimelinesAI UI.
 
 <Info>
-  The Partner API uses a separate authentication token from the Public API. Contact [support@timelines.ai](mailto:support@timelines.ai) to obtain Partner API credentials.
+The Partner API uses JWT authentication, separate from the Public API's bearer token. See [Getting started](#getting-started) below to set up your partner credentials.
 </Info>
+
+## Getting started
+
+To begin using the Partner API, you need to have your partner records created in the TimelinesAI system. This is a one-time setup process.
+
+<Steps>
+  <Step title="Contact TimelinesAI">
+    Reach out to TimelinesAI at [support@timelines.ai](mailto:support@timelines.ai) to request partner access. The team will set up your partner records in the system.
+  </Step>
+  <Step title="Receive your credentials">
+    Once your partner account is provisioned, you will receive two credentials:
+    - **Partner ID** — your unique partner identifier (e.g., `your-company-name`)
+    - **Partner Secret** — a secure key used to sign JWT tokens (keep this confidential)
+  </Step>
+  <Step title="Generate a JWT token">
+    Use your credentials to generate a short-lived JWT token for authenticating API requests. See the [Authentication](#authentication) section below for code examples.
+  </Step>
+  <Step title="Start making API calls">
+    Include the generated JWT token in the `Authorization` header and your Partner ID in the `X-TL-Partner-Id` header with every request.
+  </Step>
+</Steps>
 
 ## Base URL
 
 ```
-https://app.timelines.ai/integrations/partner/api/v1
+https://app.timelines.ai/partner/api/v1
 ```
+
+## Authentication
+
+The Partner API uses JWT (JSON Web Token) bearer authentication. Each request must include a valid JWT token signed with your Partner Secret using the HS256 algorithm.
+
+### Required headers
+
+Include the following headers in all API requests:
+
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
+| `X-TL-Partner-Id` | Your partner ID |
+| `Content-Type` | `application/json` |
+
+### JWT token generation
+
+Generate a short-lived JWT token with the following payload claims:
+
+| Claim | Type | Description |
+|-------|------|-------------|
+| `partner_id` | string | Your partner identifier |
+| `nbf` | number | Not before — set to 3 minutes in the past (Unix timestamp) |
+| `exp` | number | Expiration — set to 3 minutes in the future (Unix timestamp) |
+
+The token must be signed using the **HS256** algorithm with your **Partner Secret**.
+
+<CodeGroup>
+```javascript JavaScript
+const jwt = require('jsonwebtoken');
+
+// Configuration
+const PARTNER_ID = 'your-partner-id';
+const PARTNER_SECRET = 'your-partner-secret';
+const BASE_URL = 'https://app.timelines.ai/partner/api/v1';
+
+// Generate JWT token
+function generateToken() {
+  const now = Math.floor(Date.now() / 1000);
+  return jwt.sign({
+    partner_id: PARTNER_ID,
+    nbf: now - 180,    // Valid from 3 min ago
+    exp: now + 180     // Expires in 3 min
+  }, PARTNER_SECRET);
+}
+
+// Make authenticated request
+async function apiRequest(method, endpoint, body = null) {
+  const token = generateToken();
+  const options = {
+    method: method,
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'X-TL-Partner-Id': PARTNER_ID,
+      'Content-Type': 'application/json'
+    }
+  };
+  if (body) options.body = JSON.stringify(body);
+
+  const response = await fetch(`${BASE_URL}${endpoint}`, options);
+  return response.json();
+}
+```
+
+```python Python
+import jwt
+import requests
+from datetime import datetime, timedelta
+
+# Configuration
+PARTNER_ID = 'your-partner-id'
+PARTNER_SECRET = 'your-partner-secret'
+BASE_URL = 'https://app.timelines.ai/partner/api/v1'
+
+# Generate JWT token
+def generate_token():
+    now = datetime.utcnow()
+    payload = {
+        'partner_id': PARTNER_ID,
+        'nbf': int((now - timedelta(minutes=3)).timestamp()),
+        'exp': int((now + timedelta(minutes=3)).timestamp())
+    }
+    return jwt.encode(payload, PARTNER_SECRET, algorithm='HS256')
+
+# Make authenticated request
+def api_request(method, endpoint, json_body=None):
+    token = generate_token()
+    headers = {
+        'Authorization': f'Bearer {token}',
+        'X-TL-Partner-Id': PARTNER_ID,
+        'Content-Type': 'application/json'
+    }
+    url = f'{BASE_URL}{endpoint}'
+    response = requests.request(method, url, headers=headers, json=json_body)
+    return response.json()
+```
+</CodeGroup>
+
+<Warning>
+JWT tokens are short-lived (6-minute window). Generate a fresh token for each API request rather than caching tokens.
+</Warning>
 
 ## Capabilities
 
 <CardGroup cols={2}>
   <Card title="Workspaces" icon="building" href="/partner-api-reference/workspaces/create-a-workspace">
-    Create, configure, and manage customer workspaces. Set up subscription plans and workspace settings programmatically.
+    Create and manage customer workspaces with configurable seat allocations. Update display names and scale seats up or down.
   </Card>
   <Card title="User Management" icon="users" href="/partner-api-reference/workspaces/create-users-in-workspace">
-    Add users to workspaces so your customers' teams can access their WhatsApp communications.
+    Create placeholder users in batch — each user consumes one seat and can have a WhatsApp account connected.
   </Card>
   <Card title="QR Code Onboarding" icon="qrcode" href="/partner-api-reference/qr/generate-qr-code-for-user">
-    Generate QR codes for users to connect their WhatsApp accounts by scanning — no manual setup needed.
+    Generate QR code links for users to connect their WhatsApp accounts by scanning. Supports embedded (iframe) and standalone modes.
   </Card>
   <Card title="WhatsApp Accounts" icon="phone" href="/partner-api-reference/whatsappaccounts/disconnect-whatsapp-account">
-    Manage connected WhatsApp accounts, including disconnecting numbers when needed.
+    Forcibly disconnect WhatsApp accounts from users when needed.
   </Card>
   <Card title="API Token Management" icon="key" href="/partner-api-reference/publicapi/get-public-api-token">
-    Retrieve and rotate Public API tokens for any workspace you manage, enabling programmatic access to the Public API on behalf of your customers.
+    Retrieve and rotate Public API tokens for any managed workspace. Tokens don't expire unless explicitly rotated.
   </Card>
 </CardGroup>
 
 ## Available endpoints
 
-| Group                 | Endpoints                                                                                | Description                                              |
-| --------------------- | ---------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| **Workspaces**        | `POST /workspaces`, `GET /workspaces/{id}`, `PATCH /workspaces/{id}`                     | Create workspaces, get details, and update configuration |
-| **Users**             | `POST /workspaces/{id}/users`                                                            | Add users to a workspace                                 |
-| **QR Codes**          | `POST /qr_code`                                                                          | Generate WhatsApp connection QR codes                    |
-| **WhatsApp Accounts** | `DELETE /whatsapp_accounts/{id}`                                                         | Disconnect a WhatsApp account                            |
-| **Public API Tokens** | `GET /workspaces/{id}/public_api_token`, `POST /workspaces/{id}/public_api_token/rotate` | Retrieve or rotate a workspace's Public API token        |
+| Group | Endpoint | Description |
+|-------|----------|-------------|
+| **Workspaces** | `POST /workspaces` | Create a new partner-managed workspace with specified seats |
+| | `GET /workspaces/{workspace_id}` | Get workspace details including quotas, users, and WhatsApp accounts |
+| | `PATCH /workspaces/{workspace_id}` | Update workspace display name and/or seat count |
+| **Users** | `POST /workspaces/{workspace_id}/users` | Create placeholder users in batch (each consumes one seat) |
+| **QR Codes** | `POST /workspaces/{workspace_id}/users/{user_id}/qr` | Generate a QR code link for WhatsApp connection |
+| **WhatsApp** | `POST /workspaces/{workspace_id}/users/{user_id}/whatsapp/disconnect` | Disconnect a WhatsApp account from a user |
+| **API Tokens** | `GET /workspaces/{workspace_id}/api-token` | Retrieve the Public API token (creates one if needed) |
+| | `POST /workspaces/{workspace_id}/api-token` | Rotate the Public API token (invalidates the old one immediately) |
 
 ## Use case examples
 
@@ -55,36 +180,39 @@ https://app.timelines.ai/integrations/partner/api/v1
     Embed WhatsApp messaging into your own SaaS product without exposing TimelinesAI to your end users.
 
     1. Use `POST /workspaces` to create a workspace when a customer signs up
-    2. Add the customer's team members with `POST /workspaces/{id}/users`
-    3. Generate a QR code with `POST /qr_code` for the customer to connect their WhatsApp
-    4. Retrieve their Public API token with `GET /workspaces/{id}/public_api_token`
+    2. Create users with `POST /workspaces/{id}/users` (one per WhatsApp number they need)
+    3. Generate QR codes with `POST /workspaces/{id}/users/{user_id}/qr` — embed in your UI using `display_mode=embedding`
+    4. Retrieve their Public API token with `GET /workspaces/{id}/api-token`
     5. Use the Public API token in your backend to send/receive messages on their behalf
   </Accordion>
+
   <Accordion title="Managed service provider" icon="server">
     Offer WhatsApp as a service to multiple clients, managing everything from a single integration.
 
     1. Provision workspaces per client with `POST /workspaces`
-    2. Configure workspace settings with `PATCH /workspaces/{id}`
+    2. Configure seat allocations with `PATCH /workspaces/{id}`
     3. Onboard client WhatsApp numbers via QR codes
-    4. Monitor workspace health using Partner API Webhooks
-    5. Rotate API tokens periodically for security with `POST /workspaces/{id}/public_api_token/rotate`
+    4. Monitor workspace health using Partner API Webhooks (quota alerts, account connectivity)
+    5. Rotate API tokens periodically for security with `POST /workspaces/{id}/api-token`
   </Accordion>
+
   <Accordion title="Automated customer onboarding" icon="wand-magic-sparkles">
     Streamline the setup process so new customers can start using WhatsApp within minutes.
 
     1. Create workspace automatically when customer completes your sign-up flow
-    2. Add the customer as a user in their workspace
-    3. Present a QR code in your UI for instant WhatsApp connection
-    4. Subscribe to Partner API Webhooks to detect when the account connects
-    5. Automatically begin message syncing and enable Public API access
+    2. Create users in batch for the number of WhatsApp accounts they need
+    3. Present QR codes in your UI (iframe with `display_mode=embedding` to avoid session logout)
+    4. Listen for `whatsapp_account:connected` webhook to detect successful connection
+    5. Retrieve the Public API token and begin message syncing automatically
   </Accordion>
+
   <Accordion title="Security & compliance management" icon="shield">
     Maintain control over API access across all managed workspaces.
 
-    1. Regularly rotate Public API tokens with `POST /workspaces/{id}/public_api_token/rotate`
-    2. Subscribe to the `api_token:rotated` webhook to track token changes
-    3. Disconnect compromised WhatsApp accounts with `DELETE /whatsapp_accounts/{id}`
-    4. Monitor quota usage via Partner API Webhooks for billing and compliance alerts
+    1. Rotate Public API tokens periodically with `POST /workspaces/{id}/api-token`
+    2. Subscribe to `api-token:rotated` webhook to track all token changes
+    3. Disconnect compromised WhatsApp accounts with the disconnect endpoint
+    4. Monitor quota webhooks for billing compliance and to prevent service interruption
   </Accordion>
 </AccordionGroup>
 
@@ -92,18 +220,51 @@ https://app.timelines.ai/integrations/partner/api/v1
 
 <Steps>
   <Step title="Create a workspace">
-    `POST /workspaces` — provision a new workspace for your customer
+    `POST /workspaces` with `display_name` and `seats_purchased` — save the returned `workspace_id` for all subsequent operations
   </Step>
-  <Step title="Add users">
-    `POST /workspaces/{id}/users` — add team members who need access
+  <Step title="Create users">
+    `POST /workspaces/{id}/users` with the `count` of users needed — each user consumes one seat
   </Step>
-  <Step title="Connect WhatsApp">
-    `POST /qr_code` — generate a QR code for the user to scan and connect their WhatsApp number
+  <Step title="Generate QR codes">
+    `POST /workspaces/{id}/users/{user_id}/qr` for each user — present the QR link in your UI for WhatsApp scanning
   </Step>
-  <Step title="Enable API access">
-    `GET /workspaces/{id}/public_api_token` — retrieve the workspace's Public API token to start sending and receiving messages
+  <Step title="Retrieve API token">
+    `GET /workspaces/{id}/api-token` — use this token with the Public API to send/receive messages
   </Step>
 </Steps>
+
+## QR code embedding
+
+By default, the QR link opens a standalone page. To embed it within your application (e.g., in an iframe), append `display_mode=embedding` to the QR link URL.
+
+| Mode | Behavior |
+|------|----------|
+| **Embedded** (`display_mode=embedding`) | Does **not** log the user out of your application. Optimized for iframe usage. |
+| **Standalone** (default) | Opens a full page — **will trigger a logout** from the current session. |
+
+<Warning>
+Generating a new QR code disconnects any existing WhatsApp account for that user. Cache and reuse QR links while a connection attempt is active — only request a new one after the previous attempt completes or expires.
+</Warning>
+
+## Important notes
+
+<AccordionGroup>
+  <Accordion title="Billing" icon="credit-card">
+    Partners are invoiced monthly in arrears based on **connected WhatsApp accounts**, not provisioned seats. Actively disconnect WhatsApp accounts if a trial doesn't convert to prevent billing.
+  </Accordion>
+
+  <Accordion title="API tokens" icon="key">
+    Public API tokens obtained via `GET /api-token` **do not expire automatically**. A token remains valid indefinitely unless explicitly rotated via `POST /api-token`. The old token is invalidated immediately upon rotation.
+  </Accordion>
+
+  <Accordion title="Workspace IDs" icon="building">
+    Always store `workspace_id` and `user_id` mappings in your system. There is currently no list-workspaces endpoint — losing a workspace ID requires a support ticket.
+  </Accordion>
+
+  <Accordion title="WhatsApp account health" icon="heart-pulse">
+    Warm up new WhatsApp accounts before automation — exchange messages with 3–5 contacts first. Poll delivery statuses before running automation sequences. See [WhatsApp mass messaging best practices](https://help.timelines.ai/en/articles/12383621-whatsapp-mass-messaging-best-practices) for details.
+  </Accordion>
+</AccordionGroup>
 
 ## Next steps
 
