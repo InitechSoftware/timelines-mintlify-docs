@@ -1,10 +1,10 @@
 ---
-title: "PublicAPI Webhooks Overview"
+title: "Public API Webhooks Overview"
 description: "Receive real-time notifications for WhatsApp events in your workspace"
 mode: "wide"
 ---
 
-# PublicAPI Webhooks
+# Public API Webhooks
 
 PublicAPI Webhooks deliver real-time notifications to your application when events occur in your TimelinesAI workspace. Instead of polling the API for changes, your server receives instant HTTP POST callbacks whenever messages arrive, chats are created, accounts change status, and more.
 
@@ -165,18 +165,17 @@ Your webhook endpoint must:
   Be publicly accessible (no localhost in production)
 </Check>
 
- <Check>
+<Check>
   Use HTTPS
 </Check>
 
- <Check>
+<Check>
   Respond with a 2xx status within 5 seconds
 </Check>
 
- <Check>
+<Check>
   Accept POST requests with JSON body
 </Check>
-
 
 ## Best practices
 

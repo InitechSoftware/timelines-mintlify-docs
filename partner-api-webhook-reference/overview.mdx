@@ -1,10 +1,10 @@
 ---
-title: "PartnerAPI Webhooks Overview"
+title: "Partner API Webhooks Overview"
 description: "Receive real-time notifications for workspace, account, and quota events across your managed workspaces"
 mode: "wide"
 ---
 
-# PartnerAPI Webhooks
+# Partner API Webhooks
 
 PartnerAPI Webhooks notify your platform in real-time when important events occur across the workspaces you manage. Monitor quota usage, track WhatsApp account connections, and stay informed about API token changes — all without polling.
 
@@ -16,29 +16,29 @@ These webhooks are separate from the PublicAPI Webhooks. While PublicAPI Webhook
 
 Get alerted when your managed workspaces approach or hit their usage limits. These events enable proactive billing management and prevent service interruptions.
 
-| Event | Trigger | Description |
-|-------|---------|-------------|
-| Seats fully utilized | All seats in use | Every purchased seat in the workspace is occupied — no more users can be added |
-| Messaging quota at 90% | Nearing message limit | The workspace has used 90% or more of its messaging quota for the current billing period |
-| Messaging quota at 100% | Message limit reached | The workspace has exhausted its messaging quota — new messages will be blocked |
-| Transactions quota exhausted | Transaction limit reached | All available transactions for the workspace have been consumed |
-| API calls quota at 100% | API call limit reached | The workspace has used 100% of its Public API call quota for the current billing period |
+| Event                        | Trigger                   | Description                                                                              |
+| ---------------------------- | ------------------------- | ---------------------------------------------------------------------------------------- |
+| Seats fully utilized         | All seats in use          | Every purchased seat in the workspace is occupied — no more users can be added           |
+| Messaging quota at 90%       | Nearing message limit     | The workspace has used 90% or more of its messaging quota for the current billing period |
+| Messaging quota at 100%      | Message limit reached     | The workspace has exhausted its messaging quota — new messages will be blocked           |
+| Transactions quota exhausted | Transaction limit reached | All available transactions for the workspace have been consumed                          |
+| API calls quota at 100%      | API call limit reached    | The workspace has used 100% of its Public API call quota for the current billing period  |
 
 ### WhatsApp account events
 
 Track when WhatsApp numbers are connected or disconnected across your managed workspaces.
 
-| Event | Trigger | Description |
-|-------|---------|-------------|
-| Account connected | WhatsApp linked | A user successfully connected a WhatsApp account by scanning a QR code |
-| Account disconnected | WhatsApp unlinked | A WhatsApp account was disconnected (manually or automatically) |
+| Event                | Trigger           | Description                                                            |
+| -------------------- | ----------------- | ---------------------------------------------------------------------- |
+| Account connected    | WhatsApp linked   | A user successfully connected a WhatsApp account by scanning a QR code |
+| Account disconnected | WhatsApp unlinked | A WhatsApp account was disconnected (manually or automatically)        |
 
 ### API token events
 
 Monitor security-sensitive changes to Public API tokens.
 
-| Event | Trigger | Description |
-|-------|---------|-------------|
+| Event         | Trigger                  | Description                                                    |
+| ------------- | ------------------------ | -------------------------------------------------------------- |
 | Token rotated | Public API token changed | A workspace's Public API token was rotated via the Partner API |
 
 ## Use case examples
@@ -52,7 +52,6 @@ Monitor security-sensitive changes to Public API tokens.
     3. Offer an upsell or auto-upgrade their plan
     4. If the 100% event fires, display a warning in your UI and queue messages for later
   </Accordion>
-
   <Accordion title="Automated billing & usage tracking" icon="receipt">
     Keep your billing system in sync with actual resource consumption.
 
@@ -61,7 +60,6 @@ Monitor security-sensitive changes to Public API tokens.
     3. Trigger billing adjustments, overage charges, or plan upgrades automatically
     4. Generate usage reports for your customers
   </Accordion>
-
   <Accordion title="Onboarding status tracking" icon="list-check">
     Know instantly when a customer's WhatsApp account is ready.
 
@@ -70,7 +68,6 @@ Monitor security-sensitive changes to Public API tokens.
     3. Trigger welcome messages or next-step guides for the customer
     4. Monitor for disconnections and prompt users to reconnect
   </Accordion>
-
   <Accordion title="Security monitoring" icon="shield-halved">
     Track API token changes and account access across all workspaces.
 
