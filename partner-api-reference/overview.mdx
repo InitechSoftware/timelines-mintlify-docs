@@ -12,6 +12,27 @@ The TimelinesAI Partner API enables B2B partners to programmatically provision a
 The Partner API uses JWT authentication, separate from the Public API's bearer token. See [Getting started](#getting-started) below to set up your partner credentials.
 </Info>
 
+## Billing
+
+Understanding the billing model is essential before provisioning workspaces and connecting WhatsApp accounts.
+
+<Warning>
+Partners are invoiced monthly in arrears based on **connected WhatsApp accounts**, not provisioned seats or created users. A WhatsApp account counts toward billing from the moment it is connected until it is explicitly disconnected.
+</Warning>
+
+| Concept | How it works |
+|---------|-------------|
+| **Billing unit** | Each connected WhatsApp account (not seats or users) |
+| **Billing cycle** | Monthly in arrears |
+| **Seats** | Control the maximum number of users/WhatsApp accounts in a workspace (1–99). Seats are a capacity limit, not a billing unit. |
+| **Trials & offboarding** | If a customer trial does not convert, **actively disconnect their WhatsApp account** using `POST /workspaces/{id}/users/{user_id}/whatsapp/disconnect` to stop billing. Simply deleting or ignoring the workspace is not enough — the connected account will continue to be billed. |
+| **Seat downgrades** | When you reduce `seats_purchased` below current utilization, the platform may automatically suspend users and their associated WhatsApp accounts to comply with the new limit. |
+| **Quota monitoring** | Subscribe to `workspace:seats_full` [Partner API Webhooks](/partner-api-webhook-reference/overview) to get alerted when all seats are utilized, so you can proactively manage capacity. |
+
+<Tip>
+Always track the mapping between your customers and their `workspace_id` / `user_id` / WhatsApp account connections. This allows you to promptly disconnect accounts when a customer churns, preventing unnecessary charges.
+</Tip>
+
 ## Getting started
 
 To begin using the Partner API, you need to have your partner records created in the TimelinesAI system. This is a one-time setup process.
@@ -249,10 +270,6 @@ Generating a new QR code disconnects any existing WhatsApp account for that user
 ## Important notes
 
 <AccordionGroup>
-  <Accordion title="Billing" icon="credit-card">
-    Partners are invoiced monthly in arrears based on **connected WhatsApp accounts**, not provisioned seats. Actively disconnect WhatsApp accounts if a trial doesn't convert to prevent billing.
-  </Accordion>
-
   <Accordion title="API tokens" icon="key">
     Public API tokens obtained via `GET /api-token` **do not expire automatically**. A token remains valid indefinitely unless explicitly rotated via `POST /api-token`. The old token is invalidated immediately upon rotation.
   </Accordion>
