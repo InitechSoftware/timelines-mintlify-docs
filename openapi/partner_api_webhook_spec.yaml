@@ -439,7 +439,70 @@ components:
     X-TL-Signature:
       name: X-TL-Signature
       in: header
-      description: a JSON Web Token (JWT) token that contains the partner_id, nbf (not before), and exp (expiration) fields. using the partner''s shared secret and can be used to verify authenticity and integrity.
+      description: >-
+        A JSON Web Token (JWT) signed with your **Partner Secret** using the **HS256** algorithm.
+        Use this header to verify that the webhook was genuinely sent by TimelinesAI.
+
+
+        The JWT contains the following claims:
+
+        | Claim | Description |
+        |-------|-------------|
+        | `partner_id` | Your partner identifier — must match the `X-TL-Partner-Id` header |
+        | `nbf` | Not-before timestamp (Unix epoch) |
+        | `exp` | Expiration timestamp (Unix epoch) |
+
+
+        **Verification steps:**
+
+        1. Extract the `X-TL-Signature` header value from the incoming request.
+
+        2. Decode and verify the JWT using your **Partner Secret** with the **HS256** algorithm.
+
+        3. Confirm that the `partner_id` claim matches the `X-TL-Partner-Id` header.
+
+        4. Reject the request if verification fails (invalid signature, expired token, or mismatched partner ID).
+
+
+        **JavaScript example:**
+
+        ```js
+
+        const jwt = require(''jsonwebtoken'');
+
+        function verifyWebhook(req) {
+          const signature = req.headers[''x-tl-signature''];
+          const partnerId = req.headers[''x-tl-partner-id''];
+          try {
+            const decoded = jwt.verify(signature, PARTNER_SECRET);
+            return decoded.partner_id === partnerId;
+          } catch (err) {
+            return false;
+          }
+        }
+
+        ```
+
+
+        **Python example:**
+
+        ```python
+
+        import jwt
+
+        def verify_webhook(headers):
+            signature = headers.get(''X-TL-Signature'')
+            partner_id = headers.get(''X-TL-Partner-Id'')
+            try:
+                decoded = jwt.decode(signature, PARTNER_SECRET, algorithms=[''HS256''])
+                return decoded[''partner_id''] == partner_id
+            except jwt.InvalidTokenError:
+                return False
+
+        ```
+
+
+        See the [PartnerAPI Webhooks Overview](/partner-api-webhook-reference/overview#verifying-webhook-signatures) for more details.
       required: true
       schema:
         type: string
