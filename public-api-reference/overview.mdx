@@ -6,7 +6,7 @@ mode: "wide"
 
 # Public API
 
-The TimelinesAI Public API gives you full control over your WhatsApp workspace. Send and receive messages, manage conversations, handle file attachments, organize chats with labels, and set up real-time webhooks — all through a simple REST API.
+The TimelinesAI Public API gives you full control over your WhatsApp conversation resources. Send and receive messages, manage conversations, handle file attachments, organize chats with labels, and set up real-time webhooks — all through a simple REST API
 
 ## Base URL
 
@@ -47,17 +47,17 @@ All requests require Bearer token authentication. See [Authentication](/authenti
 
 ## Available endpoints
 
-| Group | Endpoints | Description |
-|-------|-----------|-------------|
-| **Chats** | `GET /chats`, `GET /chats/{id}`, `PATCH /chats/{id}` | List, get details, and update chats |
-| **Messages** | `POST /messages`, `POST /chats/{id}/messages`, `GET /chats/{id}/messages`, and more | Send messages by phone, chat ID, JID, or chat name. Retrieve history and status. |
-| **Reactions** | `GET /messages/{uid}/reactions`, `PUT /messages/{uid}/reactions` | Read and update message reactions |
-| **Files** | `GET /files`, `POST /files`, `POST /files_upload`, `GET /files/{uid}`, `DELETE /files/{uid}` | Upload, list, download, and delete files |
-| **Labels** | `GET /chats/{id}/labels`, `PUT /chats/{id}/labels`, `POST /chats/{id}/labels` | List, add, and replace chat labels |
-| **WhatsApp Accounts** | `GET /whatsapp_accounts` | List connected WhatsApp numbers |
-| **Teammates** | `GET /teammates` | List workspace team members |
-| **Quotas & Usage** | `GET /quotas` | Check quota limits and current usage |
-| **Webhooks** | `GET /webhooks`, `POST /webhooks`, `GET/PUT/DELETE /webhooks/{id}` | Manage webhook subscriptions |
+| Group                 | Endpoints                                                                                    | Description                                                                      |
+| --------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| **Chats**             | `GET /chats`, `GET /chats/{id}`, `PATCH /chats/{id}`                                         | List, get details, and update chats                                              |
+| **Messages**          | `POST /messages`, `POST /chats/{id}/messages`, `GET /chats/{id}/messages`, and more          | Send messages by phone, chat ID, JID, or chat name. Retrieve history and status. |
+| **Reactions**         | `GET /messages/{uid}/reactions`, `PUT /messages/{uid}/reactions`                             | Read and update message reactions                                                |
+| **Files**             | `GET /files`, `POST /files`, `POST /files_upload`, `GET /files/{uid}`, `DELETE /files/{uid}` | Upload, list, download, and delete files                                         |
+| **Labels**            | `GET /chats/{id}/labels`, `PUT /chats/{id}/labels`, `POST /chats/{id}/labels`                | List, add, and replace chat labels                                               |
+| **WhatsApp Accounts** | `GET /whatsapp_accounts`                                                                     | List connected WhatsApp numbers                                                  |
+| **Teammates**         | `GET /teammates`                                                                             | List workspace team members                                                      |
+| **Quotas & Usage**    | `GET /quotas`                                                                                | Check quota limits and current usage                                             |
+| **Webhooks**          | `GET /webhooks`, `POST /webhooks`, `GET/PUT/DELETE /webhooks/{id}`                           | Manage webhook subscriptions                                                     |
 
 ## Use case examples
 
@@ -71,7 +71,6 @@ All requests require Bearer token authentication. See [Authentication](/authenti
     4. Use `PATCH /chats/{id}` to assign the chat to the appropriate agent
     5. Add a label like `crm-synced` for tracking
   </Accordion>
-
   <Accordion title="Automated notifications" icon="bell">
     Send order updates, appointment reminders, or shipping notifications directly to WhatsApp.
 
@@ -80,7 +79,6 @@ All requests require Bearer token authentication. See [Authentication](/authenti
     3. Attach documents (invoices, receipts) using the file upload endpoints
     4. Track delivery with `GET /messages/{uid}/status_history`
   </Accordion>
-
   <Accordion title="Support ticket system" icon="headset">
     Route incoming WhatsApp messages to your support team based on content or labels.
 
@@ -90,7 +88,6 @@ All requests require Bearer token authentication. See [Authentication](/authenti
     4. Assign to the right agent with `PATCH /chats/{id}`
     5. Add internal notes with `POST /chats/{id}/notes` for context
   </Accordion>
-
   <Accordion title="Bulk outreach campaigns" icon="bullhorn">
     Send personalized messages to a list of contacts for marketing or onboarding campaigns.
 
@@ -104,16 +101,16 @@ All requests require Bearer token authentication. See [Authentication](/authenti
 
 ## Rate limits & credits
 
-| Action | Credits |
-|--------|---------|
-| Text message | 1 |
-| Message with attachment | 2 |
-| Failed message | Refunded |
+| Action                  | Credits  |
+| ----------------------- | -------- |
+| Text message            | 1        |
+| Message with attachment | 2        |
+| Failed message          | Refunded |
 
 Messages are sent with a ~2 second delay between each to comply with WhatsApp guidelines.
 
 <Info>
-Check your current usage anytime with `GET /quotas`. [Contact support](mailto:support@timelines.ai) to discuss higher limits on Business plans.
+  Check your current usage anytime with `GET /quotas`. [Contact support](mailto:support@timelines.ai) to discuss higher limits on Business plans.
 </Info>
 
 ## Next steps

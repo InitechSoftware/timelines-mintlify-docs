@@ -472,6 +472,7 @@ paths:
   /messages/to_chat_name:
     post:
       summary: Send message in existing chat, specified by chat name
+      deprecated: true
       description: 'Send message to existing WhatsApp chat (or group) specified by
         its name in TimelinesAI. Chat names are guaranteed to be unique in TimelinesAI:
         when several contacts from different WA accounts match, an index is automatically
