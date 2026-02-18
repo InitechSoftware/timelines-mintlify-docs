@@ -1,6 +1,7 @@
 ---
-title: Webhooks
+title: "Webhooks"
 description: "Receive real-time notifications for WhatsApp events"
+icon: "webhook"
 ---
 
 # Webhooks
@@ -26,14 +27,14 @@ Webhooks allow your application to receive real-time notifications when events o
 
 ## Available events
 
-| Event | Trigger |
-|-------|---------|
-| `message:received:new` | New incoming message |
-| `message:sent:new` | Message sent successfully |
-| `chat:created` | New chat created |
+| Event                  | Trigger                   |
+| ---------------------- | ------------------------- |
+| `message:received:new` | New incoming message      |
+| `message:sent:new`     | Message sent successfully |
+| `chat:created`         | New chat created          |
 
 <Info>
-See the [full event list](https://app.timelines.ai/integrations/webhooks_v2/swagger) for all available events.
+  See the [full event list](https://app.timelines.ai/integrations/webhooks_v2/swagger) for all available events.
 </Info>
 
 ## Creating a webhook
@@ -50,6 +51,7 @@ curl -X POST "https://app.timelines.ai/integrations/api/webhooks" \
 ```
 
 Response:
+
 ```json
 {
   "status": "ok",
@@ -67,10 +69,22 @@ Response:
 
 Your endpoint must:
 
-<Check>Be publicly accessible (no localhost)</Check>
-<Check>Use HTTPS</Check>
-<Check>Respond with 2xx status within 5 seconds</Check>
-<Check>Accept POST requests with JSON body</Check>
+<Check>
+  Be publicly accessible (no localhost)
+</Check>
+
+ <Check>
+  Use HTTPS
+</Check>
+
+ <Check>
+  Respond with 2xx status within 5 seconds
+</Check>
+
+ <Check>
+  Accept POST requests with JSON body
+</Check>
+
 
 ## Handling webhook events
 
@@ -196,7 +210,7 @@ If your endpoint returns a non-2xx status or times out:
 3. Webhooks are **not** automatically disabled—fix your endpoint
 
 <Warning>
-Monitor your `errors_counter` and fix issues promptly to avoid missing events.
+  Monitor your `errors_counter` and fix issues promptly to avoid missing events.
 </Warning>
 
 ### Check error count
@@ -211,9 +225,9 @@ Look for `errors_counter` in the response.
 ## Best practices
 
 <AccordionGroup>
-  <Accordion title="Respond quickly" icon="bolt">
+  <Accordion icon="bolt" title="Respond quickly">
     Process events asynchronously. Return 200 immediately, then handle the event in the background.
-    
+
     ```javascript
     app.post('/webhooks', (req, res) => {
       // Respond immediately
@@ -224,10 +238,9 @@ Look for `errors_counter` in the response.
     });
     ```
   </Accordion>
-  
-  <Accordion title="Handle duplicates" icon="copy">
+  <Accordion icon="copy" title="Handle duplicates">
     Webhooks may be delivered more than once. Use `message_uid` or event IDs to deduplicate.
-    
+
     ```javascript
     const processedEvents = new Set();
     
@@ -240,14 +253,12 @@ Look for `errors_counter` in the response.
     }
     ```
   </Accordion>
-  
-  <Accordion title="Use a queue" icon="list">
+  <Accordion icon="list" title="Use a queue">
     For high volume, push events to a message queue (Redis, RabbitMQ, SQS) and process separately.
   </Accordion>
-  
-  <Accordion title="Log everything" icon="file-lines">
+  <Accordion icon="file-lines" title="Log everything">
     Log incoming webhooks for debugging:
-    
+
     ```javascript
     app.post('/webhooks', (req, res) => {
       console.log(JSON.stringify(req.body, null, 2));
@@ -281,7 +292,7 @@ npx localtunnel --port 3000
 ```
 
 <Note>
-Remember to update your webhook URL to production when deploying.
+  Remember to update your webhook URL to production when deploying.
 </Note>
 
 ## Example: Auto-reply bot
@@ -330,10 +341,10 @@ app.listen(3000);
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Send messages" icon="paper-plane" href="/guides/sending-messages">
+  <Card icon="paper-plane" href="/guides/sending-messages" title="Send messages">
     Learn to send replies
   </Card>
-  <Card title="Manage chats" icon="comments" href="/guides/managing-chats">
+  <Card icon="comments" href="/guides/managing-chats" title="Manage chats">
     Organize incoming conversations
   </Card>
 </CardGroup>

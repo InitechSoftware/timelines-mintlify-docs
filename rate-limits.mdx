@@ -1,0 +1,113 @@
+---
+title: "Rate Limits"
+description: "Understand API rate limits and how to handle them gracefully"
+icon: "gauge-high"
+---
+
+## Overview
+
+TimelinesAI APIs enforce rate limits to ensure fair usage and platform stability for all users. Requests that exceed the rate limit will receive an HTTP `429 Too Many Requests` response.
+
+## Rate Limit Details
+
+| Parameter         | Value                        |
+| ----------------- | ---------------------------- |
+| **Rate limit**    | 30 requests per second       |
+| **Per**           | IP address                   |
+| **Burst allowance** | 10 additional requests      |
+| **Exceeded response** | HTTP `429 Too Many Requests` |
+
+<Note>
+  The rate limit applies **per IP address**, not per API token. If you have multiple integrations running from the same IP, they share the same rate limit budget.
+</Note>
+
+## How It Works
+
+Incoming requests are evaluated against a limit of **30 requests per second** per IP address. When you exceed this rate:
+
+1. Up to **10 additional requests** are queued (burst allowance) and processed once capacity becomes available.
+2. Any requests beyond the burst allowance are immediately rejected with an HTTP `429` status code.
+
+```
+Normal traffic:     ✅ ≤ 30 req/s  → Processed immediately
+Burst traffic:      ⏳ 31–40 req/s → Queued and processed shortly
+Over limit:         ❌ > 40 req/s  → Rejected with HTTP 429
+```
+
+## Handling Rate Limits
+
+When you receive a `429` response, implement an **exponential backoff** strategy to retry requests:
+
+<CodeGroup>
+
+```javascript JavaScript
+async function requestWithRetry(url, options, maxRetries = 5) {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const response = await fetch(url, options);
+
+    if (response.status === 429) {
+      const delay = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s, 8s, 16s
+      console.warn(`Rate limited. Retrying in ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      continue;
+    }
+
+    return response;
+  }
+
+  throw new Error('Max retries exceeded');
+}
+```
+
+```python Python
+import time
+import requests
+
+def request_with_retry(url, headers=None, max_retries=5):
+    for attempt in range(max_retries):
+        response = requests.get(url, headers=headers)
+
+        if response.status_code == 429:
+            delay = (2 ** attempt)  # 1s, 2s, 4s, 8s, 16s
+            print(f"Rate limited. Retrying in {delay}s...")
+            time.sleep(delay)
+            continue
+
+        return response
+
+    raise Exception("Max retries exceeded")
+```
+
+```bash cURL
+# Example 429 response
+HTTP/1.1 429 Too Many Requests
+Content-Type: application/json
+
+{
+  "error": "Too Many Requests",
+  "message": "Rate limit exceeded. Please retry after a short delay."
+}
+```
+
+</CodeGroup>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Spread requests over time">
+    Instead of sending bulk requests all at once, distribute them evenly. For example, if you need to send 100 messages, space them out at ~30 per second rather than sending all 100 simultaneously.
+  </Accordion>
+  <Accordion title="Implement exponential backoff">
+    When you receive a `429` response, wait progressively longer between retries — e.g., 1 second, then 2, then 4. This prevents a "thundering herd" effect when rate limits lift.
+  </Accordion>
+  <Accordion title="Use queuing for bulk operations">
+    For batch processing (e.g., sending messages to many contacts), implement a client-side queue that respects the 30 req/s limit. Process items from the queue at a controlled rate.
+  </Accordion>
+  <Accordion title="Monitor your usage">
+    Track your request rates in your application logs. If you're consistently hitting rate limits, consider optimizing your integration to make fewer, more targeted API calls.
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+  Repeatedly exceeding rate limits without implementing backoff may result in temporarily extended throttling for your IP address.
+</Warning>
