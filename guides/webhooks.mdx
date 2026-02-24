@@ -1,7 +1,6 @@
 ---
 title: "Webhooks"
 description: "Receive real-time notifications for WhatsApp events"
-icon: "webhook"
 ---
 
 # Webhooks
@@ -205,9 +204,10 @@ curl -X DELETE "https://app.timelines.ai/integrations/api/webhooks/7654321" \
 
 If your endpoint returns a non-2xx status or times out:
 
-1. The `errors_counter` increments
-2. After several failures, TimelinesAI emails the workspace owner
-3. Webhooks are **not** automatically disabled—fix your endpoint
+1. TimelinesAI retries the delivery **2 additional times** (3 attempts total)
+2. If all attempts fail, the `errors_counter` increments
+3. After several failures, TimelinesAI emails the workspace owner
+4. Webhooks are **not** automatically disabled — fix your endpoint
 
 <Warning>
   Monitor your `errors_counter` and fix issues promptly to avoid missing events.
