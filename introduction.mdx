@@ -1,0 +1,115 @@
+---
+title: "Introduction"
+description: "Welcome to the TimelinesAI API documentation"
+mode: "wide"
+icon: "notebook"
+---
+
+# TimelinesAI API
+
+The TimelinesAI API enables you to programmatically manage WhatsApp communications for your business. Build integrations, automate workflows, and connect WhatsApp to your existing systems.
+
+<CardGroup cols={2}>
+  <Card icon="rocket" href="/quickstart" title="Quickstart">
+    Get up and running in 5 minutes
+  </Card>
+  <Card icon="lock" href="/authentication" title="Authentication">
+    Set up your API token
+  </Card>
+  <Card icon="paper-plane" href="/guides/sending-messages" title="Send Messages">
+    Learn how to send WhatsApp messages
+  </Card>
+  <Card icon="webhook" href="/guides/webhooks" title="Webhooks">
+    Receive real-time notifications
+  </Card>
+</CardGroup>
+
+## Our APIs
+
+TimelinesAI provides two complementary APIs and their webhook systems, each designed for different audiences and use cases.
+
+### Public API
+
+The Public API is your primary interface for managing WhatsApp communications within a single workspace. Use it to send and receive messages, manage chats, upload files, organize conversations with labels, and subscribe to real-time webhook events.
+
+**Best for:** Businesses integrating WhatsApp into their own workflows — CRMs, support systems, marketing tools, and custom applications.
+
+<CardGroup cols={2}>
+  <Card icon="code" href="/public-api-reference/overview" title="Public API Reference">
+    Explore all messaging and chat management endpoints
+  </Card>
+  <Card icon="bolt" href="/webhook-reference/overview" title="PublicAPI Webhooks">
+    Real-time events for messages, chats, and account status
+  </Card>
+</CardGroup>
+
+### Partner API
+
+The Partner API is designed for platform integrators, resellers, and SaaS providers who manage multiple TimelinesAI workspaces on behalf of their customers. It lets you automate workspace provisioning, user management, WhatsApp onboarding, and API token lifecycle.
+
+**Best for:** Partners building white-label solutions, managed services, or multi-tenant platforms on top of TimelinesAI.
+
+<CardGroup cols={2}>
+  <Card icon="handshake" href="/partner-api-reference/overview" title="Partner API Reference">
+    Workspace, user, and account management endpoints
+  </Card>
+  <Card icon="satellite-dish" href="/partner-api-webhook-reference/overview" title="PartnerAPI Webhooks">
+    Quota alerts, account events, and token change notifications
+  </Card>
+</CardGroup>
+
+## What you can do
+
+<AccordionGroup>
+  <Accordion icon="message" title="Send & Receive Messages">
+    Send text messages, images, documents, and voice notes to any WhatsApp number. Retrieve message history and track delivery status from queued through read.
+  </Accordion>
+  <Accordion icon="comments" title="Manage Chats">
+    List, filter, and organize your WhatsApp conversations. Assign chats to team members, add labels, manage chat status, and add internal notes.
+  </Accordion>
+  <Accordion icon="paperclip" title="Handle Attachments">
+    Upload files from URLs or directly. Send images, PDFs, audio, and video as WhatsApp message attachments.
+  </Accordion>
+  <Accordion icon="bolt" title="Real-time Webhooks">
+    Get instant notifications when messages arrive, are sent, chats are created, or account statuses change. Partner webhooks cover quota alerts and workspace-level events.
+  </Accordion>
+  <Accordion icon="building" title="Manage Workspaces (Partner)">
+    Provision and configure customer workspaces, add users, generate QR codes for WhatsApp onboarding, and manage API tokens programmatically.
+  </Accordion>
+  <Accordion icon="chart-bar" title="Monitor Usage & Quotas">
+    Track messaging quotas, API call limits, and seat utilization. Partner webhooks alert you when workspaces approach their limits.
+  </Accordion>
+</AccordionGroup>
+
+## Key concepts
+
+| Concept         | Description                                                                              |
+| --------------- | ---------------------------------------------------------------------------------------- |
+| **Workspace**   | Your TimelinesAI account containing all chats, messages, and connected WhatsApp accounts |
+| **Chat**        | A conversation thread with a contact or group                                            |
+| **WID**         | WhatsApp ID format: `phonenumber@s.whatsapp.net` (e.g., `14155551234@s.whatsapp.net`)    |
+| **JID**         | Jabber ID — used for groups: `groupid@g.us`                                              |
+| **Message UID** | Unique identifier for each message (UUID format)                                         |
+
+## Rate limits & credits
+
+Messages sent via API consume credits from your messaging quota:
+
+| Action                  | Credits  |
+| ----------------------- | -------- |
+| Text message            | 1        |
+| Message with attachment | 2        |
+| Failed message          | Refunded |
+
+Messages are sent with a ~2 second delay between each to comply with WhatsApp guidelines. [Contact support](mailto:support@timelines.ai) to customize this on Business plans.
+
+## Need help?
+
+<CardGroup cols={2}>
+  <Card icon="envelope" href="mailto:support@timelines.ai" title="Support">
+    Email our support team
+  </Card>
+  <Card icon="gauge" href="https://app.timelines.ai" title="Dashboard">
+    Access your TimelinesAI workspace
+  </Card>
+</CardGroup>

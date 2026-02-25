@@ -20,8 +20,10 @@ info:
     \  ```\n        \n### Message formatting:\n  - use \"\\n\" for line breaks\n"
   version: 1.3.0
 servers:
-- url: /integrations/api
-  description: Public API root URL
+- url: https://app.timelines.ai/integrations/api
+  description: Production
+- url: https://staging.app.timelines.ai/integrations/api
+  description: Staging
 
 # common responses for all endpoints
 x-common-errors: &http_errors_common
@@ -470,6 +472,7 @@ paths:
   /messages/to_chat_name:
     post:
       summary: Send message in existing chat, specified by chat name
+      deprecated: true
       description: 'Send message to existing WhatsApp chat (or group) specified by
         its name in TimelinesAI. Chat names are guaranteed to be unique in TimelinesAI:
         when several contacts from different WA accounts match, an index is automatically
