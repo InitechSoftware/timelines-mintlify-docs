@@ -54,7 +54,7 @@ paths:
         up to 30 characters). The workspace is created on the calling partner's plan and linked to that partner for 
         ownership and billing-eligibility checks. An Owner user is created with a non-login, system-managed email of 
         the form `<user_id>-<workspace-id>@partners.timelines.ai` and added to the default workspace group. 
-        Seats are allocated according to seats_purchased (1-99); the Owner consumes one seat and the remaining 
+        Seats are allocated according to seats_purchased (1-999); the Owner consumes one seat and the remaining 
         seats become available for additional agents. On success the response returns workspace metadata, seat counters 
         and the newly created owner_user_id. Conflicts on identifier generation (duplicate workspace_id) are reported 
         with a 409 WorkspaceCreationFailed error.
@@ -130,7 +130,7 @@ paths:
           $ref: '#/components/responses/WorkspaceNotFound'
       description: "Updates mutable workspace attributes for a partner-managed workspace.\
         \ Partners can change the human-readable display_name and/or adjust the number\
-        \ of purchased seats (seats_purchased, 1-99). When the purchased seats\
+        \ of purchased seats (seats_purchased, 1-999). When the purchased seats\
         \ are reduced below current utilization, the platform may automatically suspend\
         \ users and their associated WhatsApp accounts to comply with the new limit.\
         \ The response returns the updated workspace representation, including seat\
@@ -353,7 +353,7 @@ components:
           description: Number of workspace seats
           example: 3
           minimum: 1
-          maximum: 99
+          maximum: 999
           default: 1
       required:
         - display_name
@@ -478,7 +478,7 @@ components:
           description: New number of workspace seats
           example: 5
           minimum: 1
-          maximum: 99
+          maximum: 999
       description: Partial update payload for a workspace. Allows partners to change
         the workspace display_name and/or the number of purchased seats. Fields are
         optional and only those provided are updated. Business rules around seat downgrades,
