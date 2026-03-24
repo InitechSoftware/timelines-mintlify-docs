@@ -27,14 +27,14 @@ Webhooks allow your application to receive real-time notifications when events o
 
 ## Available events
 
-| Event                  | Trigger                   |
-| ---------------------- | ------------------------- |
-| `message:received:new` | New incoming message      |
-| `message:sent:new`     | Message sent successfully |
-| `chat:created`         | New chat created          |
+| Event | Trigger |
+| --- | --- |
+| `message:received:new` | New incoming message |
+| `message:sent:new` | Message sent successfully |
+| `chat:created` | New chat created |
 
 <Info>
-  See the [full event list](https://app.timelines.ai/integrations/webhooks_v2/swagger) for all available events.
+  See the [full event list](https://timelinesai.mintlify.app/webhook-reference/overview) for all available events.
 </Info>
 
 ## Creating a webhook
@@ -225,7 +225,7 @@ Look for `errors_counter` in the response.
 ## Best practices
 
 <AccordionGroup>
-  <Accordion icon="bolt" title="Respond quickly">
+  <Accordion title="Respond quickly" icon="bolt">
     Process events asynchronously. Return 200 immediately, then handle the event in the background.
 
     ```javascript
@@ -238,7 +238,8 @@ Look for `errors_counter` in the response.
     });
     ```
   </Accordion>
-  <Accordion icon="copy" title="Handle duplicates">
+
+  <Accordion title="Handle duplicates" icon="copy">
     Webhooks may be delivered more than once. Use `message_uid` or event IDs to deduplicate.
 
     ```javascript
@@ -253,10 +254,12 @@ Look for `errors_counter` in the response.
     }
     ```
   </Accordion>
-  <Accordion icon="list" title="Use a queue">
+
+  <Accordion title="Use a queue" icon="list">
     For high volume, push events to a message queue (Redis, RabbitMQ, SQS) and process separately.
   </Accordion>
-  <Accordion icon="file-lines" title="Log everything">
+
+  <Accordion title="Log everything" icon="file-lines">
     Log incoming webhooks for debugging:
 
     ```javascript
@@ -341,10 +344,11 @@ app.listen(3000);
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card icon="paper-plane" href="/guides/sending-messages" title="Send messages">
+  <Card title="Send messages" icon="paper-plane" href="/guides/sending-messages">
     Learn to send replies
   </Card>
-  <Card icon="comments" href="/guides/managing-chats" title="Manage chats">
+
+  <Card title="Manage chats" icon="comments" href="/guides/managing-chats">
     Organize incoming conversations
   </Card>
 </CardGroup>
