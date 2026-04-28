@@ -122,15 +122,17 @@
             ]
           },
           {
-            "group": "Teammates",
+            "group": "Workspace",
             "pages": [
-              "public-api-reference/list-all-teammates-in-the-workspace"
+              "public-api-reference/workspace-info-and-all-current-quotas-and-utilization-stats"
             ]
           },
           {
-            "group": "Quotas & Usage",
+            "group": "Teammates",
             "pages": [
-              "public-api-reference/all-current-quotas-and-utilization-stats"
+              "public-api-reference/list-all-teammates-in-the-workspace",
+              "public-api-reference/invite-new-teammate-to-the-workspace",
+              "public-api-reference/revoke-a-pending-invitation"
             ]
           },
           {
