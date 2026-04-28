@@ -20,7 +20,7 @@ info:
     \  ```\n        \n### Message formatting:\n  - use \"\\n\" for line breaks\n"
   version: 1.3.0
 servers:
-- url: /integrations/api
+- url: https://app.timelines.ai/integrations/api
   description: Public API root URL
 
 # common responses for all endpoints
