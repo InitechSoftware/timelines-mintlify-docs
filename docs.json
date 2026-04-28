@@ -289,6 +289,14 @@
       "vscode"
     ]
   },
+  "api": {
+    "mdx": {
+      "server": "https://app.timelines.ai/integrations/api",
+      "auth": {
+        "method": "bearer"
+      }
+    }
+  },
   "footer": {
     "socials": {
       "linkedin": "https://www.linkedin.com/company/timelinesai",
