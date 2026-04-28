@@ -40,8 +40,8 @@ All requests require Bearer token authentication. See [Authentication](/authenti
   <Card title="WhatsApp Accounts" icon="phone" href="/public-api-reference/list-whatsapp-accounts-connected-in-your-timelinesai-workspace">
     List all connected WhatsApp numbers in your workspace.
   </Card>
-  <Card title="Quotas & Usage" icon="chart-bar" href="/public-api-reference/all-current-quotas-and-utilization-stats">
-    Monitor your messaging quota, API call limits, and current utilization.
+  <Card title="Workspace Info" icon="chart-bar" href="/public-api-reference/workspace-info-and-all-current-quotas-and-utilization-stats">
+    View workspace details, plan, and current quota utilization.
   </Card>
 </CardGroup>
 
@@ -55,8 +55,8 @@ All requests require Bearer token authentication. See [Authentication](/authenti
 | **Files**             | `GET /files`, `POST /files`, `POST /files_upload`, `GET /files/{uid}`, `DELETE /files/{uid}` | Upload, list, download, and delete files                                         |
 | **Labels**            | `GET /chats/{id}/labels`, `PUT /chats/{id}/labels`, `POST /chats/{id}/labels`                | List, add, and replace chat labels                                               |
 | **WhatsApp Accounts** | `GET /whatsapp_accounts`                                                                     | List connected WhatsApp numbers                                                  |
-| **Teammates**         | `GET /teammates`                                                                             | List workspace team members                                                      |
-| **Quotas & Usage**    | `GET /quotas`                                                                                | Check quota limits and current usage                                             |
+| **Teammates**         | `GET /workspace/teammates`, `POST /workspace/invitations`, `DELETE /workspace/invitations/{user_id}` | List teammates, invite, and revoke invitations                                   |
+| **Workspace**         | `GET /workspace`                                                                                 | Workspace info, plan, and quota utilization                                      |
 | **Webhooks**          | `GET /webhooks`, `POST /webhooks`, `GET/PUT/DELETE /webhooks/{id}`                           | Manage webhook subscriptions                                                     |
 
 ## Use case examples
@@ -95,7 +95,7 @@ All requests require Bearer token authentication. See [Authentication](/authenti
     2. Use `POST /messages` for each recipient with personalized text
     3. Auto-apply labels (e.g., `campaign-jan-2025`) when sending
     4. Respect the ~2 second rate limit between messages
-    5. Monitor delivery status and quota usage via `GET /quotas`
+    5. Monitor delivery status and quota usage via `GET /workspace`
   </Accordion>
 </AccordionGroup>
 
@@ -110,7 +110,7 @@ All requests require Bearer token authentication. See [Authentication](/authenti
 Messages are sent with a ~2 second delay between each to comply with WhatsApp guidelines.
 
 <Info>
-  Check your current usage anytime with `GET /quotas`. [Contact support](mailto:support@timelines.ai) to discuss higher limits on Business plans.
+  Check your current usage anytime with `GET /workspace`. [Contact support](mailto:support@timelines.ai) to discuss higher limits on Business plans.
 </Info>
 
 ## Next steps
