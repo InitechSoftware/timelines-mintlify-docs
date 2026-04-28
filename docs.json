@@ -37,7 +37,7 @@
     },
     "tabs": [
       {
-        "tab": "Overview",
+        "tab": "Introduction",
         "groups": [
           {
             "group": "Getting Started",
@@ -60,7 +60,7 @@
         ]
       },
       {
-        "tab": "PublicAPI",
+        "tab": "Public API",
         "groups": [
           {
             "group": "Overview",
@@ -148,7 +148,7 @@
         ]
       },
       {
-        "tab": "PublicAPI Webhooks",
+        "tab": "Public API Webhooks",
         "groups": [
           {
             "group": "Overview",
@@ -186,7 +186,7 @@
         ]
       },
       {
-        "tab": "PartnerAPI",
+        "tab": "Partner API",
         "groups": [
           {
             "group": "Overview",
@@ -225,7 +225,7 @@
         ]
       },
       {
-        "tab": "PartnerAPI Webhooks",
+        "tab": "Partner API Webhooks",
         "groups": [
           {
             "group": "Overview",
