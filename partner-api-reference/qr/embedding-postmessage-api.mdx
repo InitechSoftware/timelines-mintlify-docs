@@ -1,0 +1,257 @@
+---
+title: "postMessage API"
+description: "Drive the QR and phone-pairing flows from your own UI via postMessage events"
+---
+
+The embedded QR page exposes a two-way `postMessage` API between the parent window (your application) and the iframe (the TimelinesAI QR page). Partners use it to:
+
+- **Trigger** flows programmatically (start QR generation, request a pairing code) without the user clicking inside the iframe.
+- **Receive** raw payloads (QR data, pairing code) that can be rendered in the partner's own UI, optionally with the iframe hidden entirely.
+- **Observe** connection state and errors.
+
+This is the contract used by partners who want full control over the user experience — for example, rendering the QR code with their own QR-image library and styling, or showing the pairing code in a non-iframe surface elsewhere on the page.
+
+<Info>
+**Prerequisite:** your partner record must have your embedding domain(s) registered. Messages from origins not on the allowlist are silently ignored. See [Embedding overview → Prerequisite](/partner-api-reference/qr/embedding-overview#prerequisite-register-your-embedding-domain).
+</Info>
+
+## Message direction summary
+
+| Direction | Type | Purpose |
+|---|---|---|
+| Parent → iframe | `TIMELINES_START_QR` | Start the QR-code generation flow |
+| Parent → iframe | `TIMELINES_START_PHONE_LINKING` | Request a pairing code for a phone number |
+| iframe → Parent | `TIMELINES_QR_CODE_DATA` | A new QR code is available (fires on every rotation) |
+| iframe → Parent | `TIMELINES_PAIRING_CODE` | The 8-digit pairing code is available |
+| iframe → Parent | `TIMELINES_QR_CONNECTED` | The WhatsApp account has connected successfully |
+| iframe → Parent | `TIMELINES_ERROR` | The flow failed; details in payload |
+
+## Inbound messages (parent → iframe)
+
+Send messages to the iframe with `iframe.contentWindow.postMessage(payload, targetOrigin)`. The iframe validates `event.origin` against your registered embedding domain before processing.
+
+### `TIMELINES_START_QR`
+
+Starts QR-code generation. Equivalent to the user clicking the "Generate QR Code" button in the default UI.
+
+```js
+iframe.contentWindow.postMessage(
+  { type: "TIMELINES_START_QR" },
+  "https://app.timelines.ai"
+);
+```
+
+The iframe will then dispatch `TIMELINES_QR_CODE_DATA` outbound events as QR codes are generated and rotated (~every 45 seconds while waiting for a scan).
+
+### `TIMELINES_START_PHONE_LINKING`
+
+Requests an 8-digit pairing code for a specific phone number. Equivalent to the user typing their number into the phone-pairing form and clicking "Request pairing code".
+
+```js
+iframe.contentWindow.postMessage(
+  {
+    type: "TIMELINES_START_PHONE_LINKING",
+    phone: "+31612345678"
+  },
+  "https://app.timelines.ai"
+);
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `type` | string | Must be `"TIMELINES_START_PHONE_LINKING"`. |
+| `phone` | string | Phone number in international format with leading `+` and country code. |
+
+The iframe will dispatch `TIMELINES_PAIRING_CODE` once the code is issued, then `TIMELINES_QR_CONNECTED` when the user enters it on their phone.
+
+## Outbound messages (iframe → parent)
+
+Listen with `window.addEventListener("message", handler)`. Always validate `event.origin` against `https://app.timelines.ai` before trusting the payload.
+
+### `TIMELINES_QR_CODE_DATA`
+
+Fires every time a new QR code is generated, including rotations (~every 45 seconds while waiting for a scan). The `data` field is a **base64-encoded SVG data URL** — drop it directly into an `<img>` element, a CSS `background-image`, or any surface that accepts a data URL.
+
+```js
+{
+  type: "TIMELINES_QR_CODE_DATA",
+  data: "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIi..."
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `data` | string | Ready-to-render SVG of the QR code, encoded as a `data:image/svg+xml;base64,...` URL. Already includes the QR's quiet zone, scale, and styling — use as-is. |
+
+<Note>
+This event is dispatched only to partners that started the flow with `TIMELINES_START_QR`. If you embed the iframe with the default UI and never send any inbound message, the QR is rendered inside the iframe instead and this event does not fire.
+</Note>
+
+<Warning>
+You will receive this event **multiple times per session** as the QR code rotates. Always replace the previous image with the latest payload — stale QR codes will fail to scan.
+</Warning>
+
+### `TIMELINES_PAIRING_CODE`
+
+Fires when an 8-digit pairing code has been issued in response to `TIMELINES_START_PHONE_LINKING`.
+
+```js
+{ type: "TIMELINES_PAIRING_CODE", code: "12345678" }
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `code` | string | 8-digit pairing code, no separators. Display to the user as `1234-5678` for readability. |
+
+### `TIMELINES_QR_CONNECTED`
+
+Fires once the WhatsApp account is successfully connected, regardless of whether the user used QR or phone pairing. The payload is empty.
+
+```js
+{ type: "TIMELINES_QR_CONNECTED" }
+```
+
+This event is dispatched to **all** registered embedding domains for your partner record, regardless of whether you opened the flow with an inbound `TIMELINES_START_QR` / `TIMELINES_START_PHONE_LINKING` message. Default-UI iframes that never send an inbound message still receive this event.
+
+After this event the QR link is invalidated server-side. To check the connected account's identifier and phone number, call the Public API or [Get workspace details](/partner-api-reference/workspaces/get-workspace-details). Generating a new QR for the same user requires a fresh call to [Generate QR code for user](/partner-api-reference/qr/generate-qr-code-for-user).
+
+### `TIMELINES_ERROR`
+
+Fires on flow failures. The `message` field carries a human-readable description suitable for display.
+
+```js
+{
+  type: "TIMELINES_ERROR",
+  error: "",
+  message: "QR Code mismatch. Please generate a new one."
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `error` | string | **Currently always empty.** Reserved for a future machine-readable error code. Do not branch on this field today. |
+| `message` | string | Human-readable description of the failure. Suitable for displaying directly to the user. |
+
+Conditions that emit `TIMELINES_ERROR`:
+
+- QR-code mismatch on scan
+- Server-side ban (account or device)
+- WhatsApp logout (`logged_out`, `logged_out_client`)
+- WhatsApp-side ban (`banned`)
+- Account flagged for payment (`payment_required`)
+- Pairing-code timeout (during the phone-linking flow)
+- Pairing-code request failure (e.g. invalid phone number, blacklisted number)
+
+<Warning>
+**QR-code timeout does not emit `TIMELINES_ERROR` today.** When the QR rotates without being scanned for too long, the iframe shows an in-iframe "QR Code timed out" message but does not notify the parent. If you've hidden the iframe entirely, you will not learn that the QR expired. Keep the iframe visible at least minimally, or send a fresh `TIMELINES_START_QR` periodically to refresh.
+</Warning>
+
+## End-to-end example: custom QR UI
+
+Hide the iframe and render the QR code yourself. The `data` field is a ready-to-use SVG data URL — drop it into an `<img>`:
+
+```html
+<iframe
+  id="tl-iframe"
+  src="https://app.timelines.ai/qr/abcdef123456?display_mode=embedding"
+  style="display: none;"
+></iframe>
+<img id="my-qr" alt="WhatsApp QR" />
+<div id="status"></div>
+
+<script type="module">
+  const iframe = document.getElementById("tl-iframe");
+  const qrImg = document.getElementById("my-qr");
+  const status = document.getElementById("status");
+  const TL_ORIGIN = "https://app.timelines.ai";
+
+  // Listen for outbound events from the iframe.
+  window.addEventListener("message", (event) => {
+    if (event.origin !== TL_ORIGIN) return;
+    const msg = event.data;
+
+    switch (msg.type) {
+      case "TIMELINES_QR_CODE_DATA":
+        // data is a "data:image/svg+xml;base64,..." URL — use as-is.
+        qrImg.src = msg.data;
+        status.textContent = "Scan the QR with WhatsApp";
+        break;
+
+      case "TIMELINES_QR_CONNECTED":
+        status.textContent = "Connected!";
+        qrImg.style.display = "none";
+        break;
+
+      case "TIMELINES_ERROR":
+        status.textContent = `Error: ${msg.message}`;
+        break;
+    }
+  });
+
+  // Trigger the flow once the iframe has loaded.
+  iframe.addEventListener("load", () => {
+    iframe.contentWindow.postMessage(
+      { type: "TIMELINES_START_QR" },
+      TL_ORIGIN
+    );
+  });
+</script>
+```
+
+If you need to apply your own visual treatment to the QR (different colors, embedded logo, custom margins), inline the SVG into the DOM instead of using `<img>`:
+
+```js
+case "TIMELINES_QR_CODE_DATA":
+  // Strip "data:image/svg+xml;base64," prefix and decode.
+  const svgMarkup = atob(msg.data.split(",")[1]);
+  document.getElementById("my-qr-container").innerHTML = svgMarkup;
+  break;
+```
+
+## End-to-end example: custom phone-pairing UI
+
+Same skeleton, different inbound trigger and a different outbound event to handle:
+
+```js
+window.addEventListener("message", (event) => {
+  if (event.origin !== "https://app.timelines.ai") return;
+  const msg = event.data;
+
+  if (msg.type === "TIMELINES_PAIRING_CODE") {
+    // Format as 1234-5678 and display in your own UI.
+    const formatted = `${msg.code.slice(0, 4)}-${msg.code.slice(4)}`;
+    document.getElementById("my-pairing-code").textContent = formatted;
+  }
+
+  if (msg.type === "TIMELINES_QR_CONNECTED") {
+    // Same as QR flow — handle success.
+  }
+
+  if (msg.type === "TIMELINES_ERROR") {
+    // Same as QR flow — handle errors.
+  }
+});
+
+// Trigger phone pairing programmatically.
+iframe.contentWindow.postMessage(
+  { type: "TIMELINES_START_PHONE_LINKING", phone: "+31612345678" },
+  "https://app.timelines.ai"
+);
+```
+
+## Implementation notes
+
+- **The iframe must be loaded** (`load` event fired) before the parent can send inbound messages. Sending earlier is a no-op.
+- **Origin validation is exact.** If your registered embedding domain is `https://app.example.com`, sending from `https://www.app.example.com` will fail silently. Register every variant you embed from.
+- **`TIMELINES_QR_CODE_DATA` and `TIMELINES_PAIRING_CODE` are gated.** They only fire once you've sent `TIMELINES_START_QR` or `TIMELINES_START_PHONE_LINKING` respectively. Default-UI partners who never send an inbound message will not receive these events — the QR / pairing code is rendered inside the iframe instead.
+- **`TIMELINES_QR_CONNECTED` is not gated.** It fires for any embedded session — both for partners using the default UI and for partners driving the flow with `postMessage` — so you can always rely on it as a connection-success signal.
+- **QR-code timeout has no outbound notification today.** If you've hidden the iframe entirely and rely only on `postMessage`, you will not learn that the QR has expired. See the warning under [`TIMELINES_ERROR`](#timelines_error).
+- **Phone-pairing UI always renders inside the iframe.** There is no toggle to disable it. If you want a QR-only flow, hide the iframe entirely and drive QR via `TIMELINES_START_QR`.
+- **The default UI remains active even if you hide the iframe.** Hiding the iframe prevents the user from seeing TimelinesAI's UI but does not disable it server-side.
+- **The `qr_link` is single-use across connections.** After `TIMELINES_QR_CONNECTED`, generating another QR for the same user requires a fresh call to the [QR endpoint](/partner-api-reference/qr/generate-qr-code-for-user).
+
+## See also
+
+- [Embedding overview](/partner-api-reference/qr/embedding-overview)
+- [Generate QR code for user](/partner-api-reference/qr/generate-qr-code-for-user)
+- [Partner API Overview → QR code embedding](/partner-api-reference/overview#qr-code-embedding) — `display_mode=embedding` URL parameter

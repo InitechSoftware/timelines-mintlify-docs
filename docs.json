@@ -215,7 +215,9 @@
           {
             "group": "qr",
             "pages": [
-              "partner-api-reference/qr/generate-qr-code-for-user"
+              "partner-api-reference/qr/generate-qr-code-for-user",
+              "partner-api-reference/qr/embedding-overview",
+              "partner-api-reference/qr/embedding-postmessage-api"
             ]
           },
           {

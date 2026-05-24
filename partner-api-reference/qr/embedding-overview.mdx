@@ -1,0 +1,49 @@
+---
+title: "Embedding overview"
+description: "Embed the WhatsApp QR connection page in your own product, with default or fully custom UI"
+---
+
+The `qr_link` returned by [Generate QR code for user](/partner-api-reference/qr/generate-qr-code-for-user) opens a TimelinesAI-hosted page that walks the end user through connecting their WhatsApp account. Partners building white-label experiences typically embed this page in an iframe so the user never leaves the partner's product.
+
+This section covers everything that controls how that embedded experience looks and behaves: the URL parameter that styles the page for embedding, and a `postMessage`-based API for partners who want to drive the flow with their own UI.
+
+## Two integration modes
+
+<CardGroup cols={2}>
+  <Card title="Default UI in an iframe" icon="window">
+    Embed the QR connection page in an iframe and let TimelinesAI render the QR code, phone-pairing fallback, and instructions. Minimal partner-side code. Use the `display_mode=embedding` URL parameter for iframe-friendly styling — see [Partner API Overview → QR code embedding](/partner-api-reference/overview#qr-code-embedding).
+  </Card>
+  <Card title="Fully custom UI" icon="palette">
+    Hide the iframe entirely and drive the connection flow through the [postMessage API](/partner-api-reference/qr/embedding-postmessage-api). Receive the raw QR payload and pairing code as events, render them in your own design system, and listen for connection and error events.
+  </Card>
+</CardGroup>
+
+Both modes use the same `qr_link` URL — the difference is purely partner-side.
+
+## Prerequisite: register your embedding domain
+
+Embedding the QR page in your application requires your partner record to have one or more **embedding domains** registered. This is the allowlist of parent-window origins to which TimelinesAI will dispatch outbound `postMessage` events and from which it will accept inbound `postMessage` commands.
+
+This applies in both integration modes — even a partner using the default UI inside an iframe receives the `TIMELINES_QR_CONNECTED` outbound event on successful connection, which requires the allowlist to be configured.
+
+<Steps>
+  <Step title="Contact TimelinesAI">
+    Email [support@timelines.ai](mailto:support@timelines.ai) with the list of origins where you will embed the iframe (e.g. `https://app.your-product.com`, `https://staging.your-product.com`). Include exact scheme, host, and port for each.
+  </Step>
+  <Step title="Confirmation">
+    The TimelinesAI team registers the origins on your partner record. Multiple origins are supported.
+  </Step>
+  <Step title="Verify">
+    Once registered, embed the iframe from one of the allowed origins and confirm a postMessage round-trip succeeds. Messages from any other origin are silently ignored by the iframe.
+  </Step>
+</Steps>
+
+<Warning>
+Origin matching is exact: scheme, host, and port must all match. `https://app.example.com` is **not** the same as `https://www.app.example.com` or `http://app.example.com`. If you embed from redirects, rewrites, or a non-standard port, list every variant.
+</Warning>
+
+## Next
+
+<Card title="postMessage API" icon="comment-dots" href="/partner-api-reference/qr/embedding-postmessage-api">
+  Inbound and outbound message catalog for driving the flow programmatically.
+</Card>
