@@ -161,7 +161,8 @@
             "pages": [
               "webhook-reference/messages/triggered-when-a-new-outgoing-message",
               "webhook-reference/messages/triggered-when-there-is-a-new-incoming-message",
-              "webhook-reference/messages/triggered-when-there-is-a-new-message"
+              "webhook-reference/messages/triggered-when-there-is-a-new-message",
+              "webhook-reference/messages/triggered-when-a-whatsapp-message-reaction-is-set-or-cleared"
             ]
           },
           {
@@ -181,6 +182,14 @@
               "webhook-reference/chats/triggered-when-there-is-a-new-outgoing-direct-chat",
               "webhook-reference/chats/triggered-when-a-chat-was-reassigned-to-a-workspace-member",
               "webhook-reference/chats/triggered-when-a-chat-was-unassigned"
+            ]
+          },
+          {
+            "group": "calls",
+            "pages": [
+              "webhook-reference/calls/triggered-when-an-incoming-whatsapp-call-was-missed",
+              "webhook-reference/calls/triggered-when-an-incoming-whatsapp-call-ended",
+              "webhook-reference/calls/triggered-when-an-outgoing-whatsapp-call-ended"
             ]
           }
         ]

@@ -201,6 +201,66 @@ webhooks:
         '200':
           description: 'Receiver accepted the event'
 
+  call:incoming:missed:
+    post:
+      summary: Triggered when an incoming WhatsApp call was missed.
+      tags:
+        - calls
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CallData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  call:incoming:ended:
+    post:
+      summary: Triggered when an incoming WhatsApp call ended.
+      tags:
+        - calls
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CallData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  call:outgoing:ended:
+    post:
+      summary: Triggered when an outgoing WhatsApp call ended.
+      tags:
+        - calls
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CallData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  message:reaction:
+    post:
+      summary: Triggered when a WhatsApp message reaction is set or cleared.
+      tags:
+        - messages
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReactionData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
 components:
   schemas:
 # Main data objects
@@ -266,6 +326,50 @@ components:
           $ref: '#/components/schemas/MessageDataWhatsappAccountInfo'
         message:
           $ref: '#/components/schemas/MessageDataInfo'
+
+    CallData:
+      type: object
+      required:
+        - event_type
+        - chat
+        - whatsapp_account
+        - call_details
+      properties:
+        event_type:
+          type: string
+          description: Webhook event name
+          example: call:incoming:missed
+          enum:
+            - call:incoming:missed
+            - call:incoming:ended
+            - call:outgoing:ended
+        chat:
+          $ref: '#/components/schemas/CallDataChatInfo'
+        whatsapp_account:
+          $ref: '#/components/schemas/CallDataWhatsappAccountInfo'
+        call_details:
+          $ref: '#/components/schemas/CallDetailsInfo'
+
+    ReactionData:
+      type: object
+      required:
+        - event_type
+        - chat
+        - whatsapp_account
+        - reaction
+      properties:
+        event_type:
+          type: string
+          description: Webhook event name
+          example: message:reaction
+          enum:
+            - message:reaction
+        chat:
+          $ref: '#/components/schemas/ReactionDataChatInfo'
+        whatsapp_account:
+          $ref: '#/components/schemas/ReactionDataWhatsappAccountInfo'
+        reaction:
+          $ref: '#/components/schemas/ReactionInfo'
 
 # Subobjects
     AccountDataWhatsappAccountInfo:
@@ -420,7 +524,7 @@ components:
           type: integer
           example: 123456
         is_group:
-          type: bool
+          type: boolean
           example: false
         phone:
           type: string
@@ -544,3 +648,223 @@ components:
         previous_responsible_email:
           type: string
           example: agent-jones@example.com
+
+    CallDataChatInfo:
+      type: object
+      required:
+        - full_name
+        - chat_url
+        - chat_id
+        - chat_type
+        - platform
+        - phone
+      properties:
+        full_name:
+          type: string
+          example: Agent Smith
+        chat_url:
+          type: string
+          example: https://app.timelines.ai/chat/123456/messages/
+        chat_id:
+          type: integer
+          example: 123456
+        chat_type:
+          type: string
+          description: direct or group
+          example: direct
+          enum:
+            - direct
+            - group
+        platform:
+          type: string
+          description: whatsapp
+          example: whatsapp
+          enum:
+            - whatsapp
+        phone:
+          type: string
+          description: Bare digits (no + prefix) for direct chats; empty string for groups.
+          example: "380739833532"
+        responsible_name:
+          type: string
+          example: Agent Brown
+        responsible_email:
+          type: string
+          example: agent-brown@example.com
+
+    CallDataWhatsappAccountInfo:
+      type: object
+      required:
+        - whatsapp_account_wid
+        - full_name
+        - email
+        - phone
+      properties:
+        whatsapp_account_wid:
+          type: string
+          description: WhatsApp account JID
+          example: 123456789@s.whatsapp.net
+        full_name:
+          type: string
+          example: Agent Brown
+        email:
+          type: string
+          example: agent-brown@example.com
+        phone:
+          type: string
+          example: "+123456789"
+
+    CallDetailsInfo:
+      type: object
+      required:
+        - direction
+        - is_video
+        - status
+        - timestamp
+        - message_uid
+        - caller
+        - recipient
+      properties:
+        duration:
+          type:
+            - integer
+            - "null"
+          description: Call duration in seconds, null if not available
+          example: 120
+        direction:
+          type: string
+          description: incoming or outgoing
+          example: incoming
+        is_video:
+          type: boolean
+          example: false
+        status:
+          type: string
+          description: |
+            Allowed values per event_type:
+            - call:incoming:missed -> Missed
+            - call:incoming:ended -> Answered | Rejected
+            - call:outgoing:ended -> Ended | No Answer | Rejected
+          example: Missed
+          enum:
+            - Missed
+            - Answered
+            - Rejected
+            - No Answer
+            - Ended
+        timestamp:
+          type: string
+          example: 2024-01-08 10:35:18 +0200
+        message_uid:
+          type: string
+          example: c7ec509d-0171-1ead-a84b-c6943a644768
+        caller:
+          $ref: '#/components/schemas/PartyInfo'
+        recipient:
+          $ref: '#/components/schemas/PartyInfo'
+
+    ReactionDataChatInfo:
+      type: object
+      required:
+        - full_name
+        - chat_url
+        - chat_id
+        - chat_type
+        - platform
+        - phone
+      properties:
+        full_name:
+          type: string
+          example: Agent Smith
+        chat_url:
+          type: string
+          example: https://app.timelines.ai/chat/123456/messages/
+        chat_id:
+          type: integer
+          example: 123456
+        chat_type:
+          type: string
+          description: "Chat type: direct or group"
+          example: direct
+          enum:
+            - direct
+            - group
+        platform:
+          type: string
+          description: Messaging platform
+          example: whatsapp
+          enum:
+            - whatsapp
+        phone:
+          type: string
+          description: Bare digits (no + prefix) for direct chats; empty string for groups.
+          example: "380739833532"
+        responsible_name:
+          type: string
+          example: Agent Brown
+        responsible_email:
+          type: string
+          example: agent-brown@example.com
+
+    ReactionDataWhatsappAccountInfo:
+      allOf:
+        - $ref: '#/components/schemas/MessageDataWhatsappAccountInfo'
+        - type: object
+          required:
+            - whatsapp_account_wid
+          properties:
+            whatsapp_account_wid:
+              type: string
+              description: WhatsApp account WID
+              example: 123456789@s.whatsapp.net
+
+    ReactorInfo:
+      type: object
+      required:
+        - full_name
+        - phone
+      properties:
+        full_name:
+          type: string
+          example: John Smith
+        phone:
+          type: string
+          example: "+123456789"
+
+    ReactionInfo:
+      type: object
+      required:
+        - message_uid
+        - action
+        - emoji
+        - timestamp
+        - reactions
+      properties:
+        message_uid:
+          type: string
+          description: UID of the message that was reacted to
+          example: c7ec509d-0171-1ead-a84b-c6943a644768
+        action:
+          type: string
+          description: "Reaction action: set or clear"
+          example: set
+          enum:
+            - set
+            - clear
+        emoji:
+          type: string
+          description: Emoji reaction
+          example: "ЁЯСН"
+        reactor:
+          $ref: '#/components/schemas/ReactorInfo'
+        timestamp:
+          type: string
+          example: 2024-01-08 10:35:18 +0200
+        reactions:
+          type: object
+          description: Current reaction counts as integer values
+          additionalProperties:
+            type: integer
+          example:
+            ЁЯСН: 2
+            тЭдя╕П: 1

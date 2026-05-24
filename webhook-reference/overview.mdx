@@ -36,6 +36,7 @@ Real-time notifications for all message activity in your workspace.
 | `message:new` | Any new message | Fires for both incoming and outgoing messages |
 | `message:received:new` | Incoming message | A customer or contact sends you a message |
 | `message:sent:new` | Outgoing message | A message you sent is processed |
+| `message:reaction` | Reaction set or cleared | An emoji reaction is added to or removed from a message |
 
 ### Chat events
 
@@ -43,11 +44,21 @@ Track conversation lifecycle and assignment changes.
 
 | Event | Trigger | Description |
 |-------|---------|-------------|
-| `chat:created` | New chat (any) | A new direct or group chat appears |
-| `chat:received:created` | New incoming chat | A contact initiates a conversation with you |
-| `chat:sent:created` | New outgoing chat | You start a new conversation |
-| `chat:assigned` | Chat reassigned | A chat is assigned to a team member |
-| `chat:unassigned` | Chat unassigned | A chat's assignment is removed |
+| `chat:new` | New chat (any) | A new direct or group chat appears |
+| `chat:incoming:new` | New incoming chat | A contact initiates a conversation with you |
+| `chat:outgoing:new` | New outgoing chat | You start a new conversation |
+| `chat:responsible:assigned` | Chat reassigned | A chat is assigned to a team member |
+| `chat:responsible:unassigned` | Chat unassigned | A chat's assignment is removed |
+
+### Call events
+
+Receive call history events for WhatsApp voice and video calls. Fired only after the call ends.
+
+| Event | Trigger | Description |
+|-------|---------|-------------|
+| `call:incoming:missed` | Incoming call missed | The recipient never picked up before the caller ended |
+| `call:incoming:ended` | Incoming call ended | Status `Answered` (call was picked up) or `Rejected` (actively declined) |
+| `call:outgoing:ended` | Outgoing call ended | Status `Ended` (completed), `No Answer`, or `Rejected` |
 
 ### WhatsApp account events
 
@@ -75,7 +86,7 @@ Monitor the connection status of your WhatsApp numbers.
   <Accordion title="Real-time CRM sync" icon="arrows-rotate">
     Keep your CRM updated the moment a conversation happens.
 
-    1. Subscribe to `message:received:new` and `chat:created`
+    1. Subscribe to `message:received:new` and `chat:new`
     2. On new chat — create a lead/contact in your CRM
     3. On new message — log the interaction as an activity
     4. Use chat assignment events to sync agent ownership
@@ -84,7 +95,7 @@ Monitor the connection status of your WhatsApp numbers.
   <Accordion title="Team notification system" icon="bell">
     Alert your team in Slack, Teams, or email when important events happen.
 
-    1. Subscribe to `message:received:new` and `chat:assigned`
+    1. Subscribe to `message:received:new` and `chat:responsible:assigned`
     2. Filter events by label or content keywords
     3. Forward the notification to Slack, Teams, or a custom dashboard
     4. Monitor WhatsApp account events to alert admins about disconnections
@@ -143,11 +154,7 @@ When a new message arrives, your endpoint receives a payload like:
         "size": 1234567,
         "mimetype": "application/pdf"
       }
-    ],
-    "reactions": {
-      "👍": "2",
-      "❤️": "1"
-    }
+    ]
   }
 }
 ```
@@ -157,7 +164,7 @@ When a new message arrives, your endpoint receives a payload like:
 </Info>
 
 <Info>
-**Reactions** — The `reactions` object is a map of emoji characters to their count as strings (e.g., `"👍": "2"`). This field is included when the message has reactions.
+**Reactions** — Emoji reactions on messages are delivered via the dedicated `message:reaction` event, not on `message:new`. The payload includes the full current reactions map for the message (emoji → integer count) along with the action (`set` or `clear`) and the reactor's identity.
 </Info>
 
 ## Endpoint requirements
