@@ -20,8 +20,8 @@ info:
     \  ```\n        \n### Message formatting:\n  - use \"\\n\" for line breaks\n"
   version: 1.3.0
 servers:
-- url: https://app.timelines.ai/integrations/api
-  description: Production
+- url: /integrations/api
+  description: Public API root URL
 
 # common responses for all endpoints
 x-common-errors: &http_errors_common
@@ -610,6 +610,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/WorkspaceTeammatesResponse'
+        <<: *http_errors_common
+  /workspace/teammates/me:
+    get:
+      summary: Info about current teammate in the workspace.
+      description: ''
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceTeammatesMeResponse'
         <<: *http_errors_common
   /workspace/invitations:
     post:
@@ -1232,11 +1244,22 @@ components:
           enum: [admin, team_supervisor, teammate, agent, collaborator]
           description: 'Role to assign. One of: collaborator, teammate, admin, agent, team_supervisor. Case-insensitive.'
           example: agent
+    WorkspaceTeamsItem:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          description: Title of the team
+          example: Default
     WorkspaceTeammatesItem:
       required:
       - user_id
       - display_name
       - email
+      - role
+      - team
       - status
       - created_at
       type: object
@@ -1249,18 +1272,26 @@ components:
           type: string
           description: Display name of the user
           example: John Doe
-        role:
-          type: string
-          description: Role of the user in the workspace
-          example: owner
         email:
           type: string
           description: Email address of the user
           example: admin@timelines.ai
+        role:
+          type: string
+          description: Role of the user in the workspace
+          example: owner
+        team:
+          type: string
+          description: Team of the user in the workspace
+          example: Default
         status:
           type: string
           description: Status of the user
-          example: active
+          example: Active
+        invitation_status:
+          type: string
+          description: Invitation status of the user
+          example: Expired
         created_at:
           type: string
 #          format: date-time  # we use self formated strings
@@ -1273,6 +1304,10 @@ components:
     WorkspaceTeammatesList:
       type: object
       properties:
+        teams:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkspaceTeamsItem'
         teammates:
           type: array
           items:
@@ -1680,9 +1715,58 @@ components:
           $ref: '#/components/schemas/MessageReactionsObject'
     MessageReactionsObject:
       type: object
+      required:
+      - users
+      - reactions
+      - total
+      properties:
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/MessageReactionUser'
+        reactions:
+          type: object
+          additionalProperties:
+            type: integer
+          example:
+            👍: 2
+            ❤️: 5
+        total:
+          type: integer
+          example: 7
       example:
-        👍: '2'
-        ❤️: '5'
+        users:
+        - name: John Doe
+          phone: '+972540000001'
+          reaction: 👍
+          current: true
+        - name: Kate Smith
+          phone: '+972540000002'
+          reaction: 👍
+          current: false
+        reactions:
+          👍: 2
+        total: 2
+    MessageReactionUser:
+      type: object
+      required:
+      - name
+      - phone
+      - reaction
+      - current
+      properties:
+        name:
+          type: string
+          example: John Doe
+        phone:
+          type: string
+          example: '+972540000001'
+        reaction:
+          type: string
+          example: 👍
+        current:
+          type: boolean
+          example: true
     MessageSendResponse:
       type: object
       required:
@@ -1765,6 +1849,20 @@ components:
           - error
         data:
           $ref: '#/components/schemas/WorkspaceTeammatesList'
+    WorkspaceTeammatesMeResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          $ref: '#/components/schemas/WorkspaceTeammatesItem'
     WorkspaceTeammateInfoResponse:
       type: object
       required:
