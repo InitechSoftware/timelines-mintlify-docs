@@ -20,8 +20,8 @@ info:
     \  ```\n        \n### Message formatting:\n  - use \"\\n\" for line breaks\n"
   version: 1.3.0
 servers:
-- url: /integrations/api
-  description: Public API root URL
+- url: https://app.timelines.ai/integrations/api
+  description: Production
 
 # common responses for all endpoints
 x-common-errors: &http_errors_common
@@ -33,6 +33,10 @@ x-common-errors: &http_errors_common
     $ref: '#/components/responses/AccessDenied'
   '404':
     $ref: '#/components/responses/NotFound'
+
+x-common-errors-too-large: &http_errors_too_large
+  '413':
+    $ref: '#/components/responses/PayloadTooLarge'
 
 x-common-response: &http_simple_response_common
   '200':
@@ -259,9 +263,36 @@ paths:
               schema:
                 $ref: '#/components/schemas/MessageSendResponse'
         <<: *http_errors_common
+  /chats/{chat_id}/file_message:
+    post:
+      summary: Send file message in existing chat
+      description: >
+        Send a file (document) into an existing WhatsApp chat specified by chat_id.
+        The file will be delivered as a document-type WhatsApp message and may include
+        an optional caption.
+      parameters:
+      - $ref: '#/components/parameters/chat_id'
+      requestBody:
+        description: >
+          The request body in multipart/form-data format, containing the binary
+          file content, optional filename, optional MIME type, and optional caption.
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FileUploadForm'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageSendResponse'
+        <<: *http_errors_common
+        <<: *http_errors_too_large
   /chats/{chat_id}/voice_message:
     post:
-      summary: ''
+      summary: Send voice note in existing chat
       description: Send voice note into existing WhatsApp chat (or group) specified
         by chat_id. Oga / mp3 audio files can be used as attachment.
       parameters:
@@ -282,6 +313,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/MessageSendResponse'
         <<: *http_errors_common
+        <<: *http_errors_too_large
   /chats/{chat_id}/labels:
     get:
       summary: List labels for the specified chat.
@@ -472,31 +504,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/MessageSendResponse'
         <<: *http_errors_common
-  /messages/to_chat_name:
-    post:
-      summary: Send message in existing chat, specified by chat name
-      description: 'Send message to existing WhatsApp chat (or group) specified by
-        its name in TimelinesAI. Chat names are guaranteed to be unique in TimelinesAI:
-        when several contacts from different WA accounts match, an index is automatically
-        appended to contact name at sync time. Optionally specify WhatsApp Account
-        to use for sending. If omitted, will use the most recently connected WhatsApp
-        account in the workspace. A message may contain a plaintext body or an attachment
-        or both.'
-      requestBody:
-        description: A JSON describing recipient and message payload.
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/MessageToChatName'
-      responses:
-        '200':
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageSendResponse'
-        <<: *http_errors_common
+
+#  deprecated
+#  /messages/to_chat_name:
+#    post:
+#      summary: Send message in existing chat, specified by chat name
+#      description: 'Send message to existing WhatsApp chat (or group) specified by
+#        its name in TimelinesAI. Chat names are guaranteed to be unique in TimelinesAI:
+#        when several contacts from different WA accounts match, an index is automatically
+#        appended to contact name at sync time. Optionally specify WhatsApp Account
+#        to use for sending. If omitted, will use the most recently connected WhatsApp
+#        account in the workspace. A message may contain a plaintext body or an attachment
+#        or both.'
+#      requestBody:
+#        description: A JSON describing recipient and message payload.
+#        required: true
+#        content:
+#          application/json:
+#            schema:
+#              $ref: '#/components/schemas/MessageToChatName'
+#      responses:
+#        '200':
+#          description: Success
+#          content:
+#            application/json:
+#              schema:
+#                $ref: '#/components/schemas/MessageSendResponse'
+#        <<: *http_errors_common
+
   /files:
     get:
       summary: List files uploaded in your TimelinesAI workspace
@@ -530,6 +565,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/FileInfoResponse'
         <<: *http_errors_common
+        <<: *http_errors_too_large
   /files/{file_uid}:
     get:
       summary: Get details and temporary download URL for a specified uploaded file.
@@ -573,6 +609,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/FileInfoResponse'
         <<: *http_errors_common
+        <<: *http_errors_too_large
   /whatsapp_accounts:
     get:
       summary: List WhatsApp accounts connected in your TimelinesAI workspace.
@@ -683,7 +720,17 @@ paths:
         <<: *http_errors_common
     post:
       summary: Create webhook
-      description: 'Creates a new webhook subscription for a specified event. You can optionally include the enabled parameter to control whether the webhook is initially active or disabled. A full list of supported events is available at: [https://app.timelines.ai/integrations/webhooks_v2/swagger](https://app.timelines.ai/integrations/webhooks_v2/swagger)'
+      description: |
+        Creates a webhook subscription for a specified event. You can optionally include the `enabled` parameter to control whether the webhook is initially active or disabled. A full list of supported events is available in the [Webhooks events documentation](https://timelinesai.mintlify.dev/docs/webhook-reference/overview#available-events).
+
+        This endpoint is **idempotent** on the combination of `event_type` and `url` within a workspace. Posting the same `event_type` and `url` more than once does not create a duplicate subscription:
+
+        - If no matching subscription exists, a new one is created.
+        - If a matching subscription already exists and is active, the request is a no-op and returns the existing subscription.
+        - If a matching subscription exists but is disabled, it is re-enabled.
+        - If a matching subscription was previously deleted, it is restored and enabled.
+
+        In all cases the response is `200` and returns the subscription's existing `id`, so repeated calls are safe to retry. Subscriptions are scoped per workspace: an identical `url` in a different workspace is independent.
       requestBody:
         description: A JSON describing webhook.
         required: true
@@ -826,12 +873,19 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
+    PayloadTooLarge:
+      description: Payload is too large
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
   schemas:
     ChatDetails:
       type: object
       properties:
         name:
           type: string
+          maxLength: 256
           description: Chat's name (must be unique in workspace)
           example: John Doe
         responsible:
@@ -850,14 +904,24 @@ components:
           example: true
         chatgpt_autoresponse_enabled:
           type: boolean
-          description: Is the ChatGPT autoresponse enabled (true) or disabled (false)
-            for the chat
           example: true
+          description: >
+            Set the AI Agent (ChatGPT autoresponse) on or off for this chat. Setting `true`
+            mirrors the in-app **AI Agent** switch — it clears any "auto-disabled by outgoing
+            response" lock and re-arms the agent so it will reply to the next inbound
+            message. Setting `false` turns the agent off for this chat.
+    Label:
+      type: string
+      maxLength: 64
+      description: assign label to the chat, in which the message is sent (create
+        new label, if not exists)
+      example: customer
     Message:
       type: object
       properties:
         text:
           type: string
+          maxLength: 2000
           description: plain text message
           example: hello, world!
         file_uid:
@@ -865,12 +929,10 @@ components:
           description: attachment UID
           example: afa9d4dd-978d-4a14-aa1b-bd65c272e645
         label:
-          type: string
-          description: assign label to the chat, in which the message is sent (create
-            new label, if not exists)
-          example: customer
+          $ref: '#/components/schemas/Label'
         chat_name:
           type: string
+          maxLength: 256
           description: an exact name of the chat (or group) as appears in TimelinesAI)
           example: MyChat
         attachment_template_id:
@@ -944,6 +1006,7 @@ components:
       properties:
         reaction:
           type: string
+          maxLength: 50
           description: 'Empty string: clear caller’s reaction. A single emoji character. A Unicode escape sequence representing a single emoji (for example "\\uD83D\\uDC4D").'
           example: '👍'
     ChatInfo:
@@ -972,9 +1035,16 @@ components:
         phone:
           example: '+972501111111'
           type: string
+          description: >
+            Contact's phone number in international format. `null` for group chats.
         jid:
           example: 14840000000@s.whatsapp.net
           type: string
+          description: >
+            WhatsApp-native identifier for the contact or group, structured as
+            `<id>@<server>` — e.g. `14840000000@s.whatsapp.net` for a contact (the
+            `id` part is the phone number) or `<id>@g.us` for a group. Use this value
+            with JID-addressed endpoints.
         is_group:
           example: false
           type: boolean
@@ -993,11 +1063,15 @@ components:
           items:
             type: string
         chatgpt_autoresponse_enabled:
-          example: true
           type: boolean
+          example: true
+          description: Whether the AI Agent (ChatGPT autoresponse) is currently enabled for this chat.
         responsible_email:
           example: kate.smitch@acme.com
           type: string
+          description: >
+            Registration email of the team member responsible for the chat;
+            `null` if the chat is unassigned.
         responsible_name:
           example: Kate Smith
           type: string
@@ -1010,6 +1084,9 @@ components:
         created_timestamp:
           example: 2024-01-08 10:35:18 +0200
           type: string
+          description: >
+            Chat creation time in the workspace timezone, formatted
+            `YYYY-MM-DD HH:MM:SS ±ZZZZ`.
         last_message_uid:
           example: 4f43a9a0-b87e-4667-adfd-689674c3326c
           type: string
@@ -1019,6 +1096,11 @@ components:
         unattended:
           example: false
           type: boolean
+          description: >
+            `true` when the AI Agent / autoresponder has flagged the chat as an
+            **unattended customer** — an inbound message went unanswered and tripped
+            the not-attended flow; cleared once the chat is handled. (Same underlying
+            value as the webhook field `unattended_customer`.)
         photo:
           example: https://acme.com/logo.png
           type: string
@@ -1039,15 +1121,25 @@ components:
               chat_id:
                 type: integer
                 example: 123456
+                description: >
+                  TimelinesAI chat ID of this member's one-on-one chat, if such a
+                  chat exists; otherwise `null`.
         is_allowed_to_message:
           example: true
           type: boolean
+          description: >
+            Whether messages can currently be sent into this chat via the API.
+            `false` means sends to this chat will be rejected — common reasons are: the chat is a WhatsApp 
+            **broadcast list** (`@broadcast` JID) or a **channel/newsletter** (`@newsletter` JID), or the 
+            **WhatsApp account that owns the chat is currently disconnected**. 
+            `true` for normal one-on-one and group chats whose WhatsApp account is connected.
     MessageInfo:
       type: object
       required:
       - uid
       - chat_id
       - timestamp
+      - received_timestamp
       - sender_phone
       - sender_name
       - recipient_phone
@@ -1067,7 +1159,12 @@ components:
           example: '1000001'
           type: integer
         timestamp:
+          description: message creation timestamp, WhatsApp message time
           example: 2023-06-18 15:19:23 +0300
+          type: string
+        received_timestamp:
+          description: message creation timestamp in TimelinesAI, in ISO format with timezone
+          example: 2023-06-18 14:39:25 +0300
           type: string
         sender_phone:
           example: '+972540000001'
@@ -1087,6 +1184,9 @@ components:
         text:
           example: Hello, Kate👍
           type: string
+          description: >
+            Message body text. `null` for attachment-only messages and for call /
+            event messages.
         attachment_url:
           example: https://acme.com/logo.png
           type: string
@@ -1096,15 +1196,28 @@ components:
         status:
           example: Read
           type: string
+          description: >
+            Delivery status, one of: `Sending`, `Sent`, `Delivered`, `Read`,
+            `Failed`, `Pending`. For call messages, a call status (e.g. `answered`,
+            `missed`) is returned instead.
         origin:
           example: Public API
           type: string
+          description: >
+            Human-readable origin of the message, e.g. `Public API`, `Shared Inbox`,
+            `Mass Messaging`, `Chrome Extension`, `synced from WhatsApp`, `Webhook`.
+            Additional values are possible (e.g. from OIDC / connected third-party
+            apps), so treat this as an open-ended, display-only string rather than an
+            exhaustive enum.
         has_attachment:
           example: true
           type: boolean
         message_type:
           example: Note
           type: string
+          description: >
+            Type of message: one of `whatsapp`, `whatsapp_call`, `note`, `email`,
+            `summary`.
         reactions:
           $ref: '#/components/schemas/MessageReactionsObject'
         data:
@@ -1112,9 +1225,16 @@ components:
             key1: value1
             key2: value2
           type: object
+          description: >
+            Free-form metadata object whose contents vary by `message_type` (for
+            example, call status, or scheduled-event start/end times). Shape is not
+            stable across message types.
         created_by:
           example: Kate Smith
           type: string
+          description: >
+            Display name of the team member who created the message; empty string
+            for messages not created by a member (e.g. synced or inbound messages).
     MessageStatusHistoryRecord:
       type: object
       required:
@@ -1137,7 +1257,7 @@ components:
           - label2
           - label3
           items:
-            type: string
+            $ref: '#/components/schemas/Label'
     NoteInfo:
       type: object
       required:
@@ -1145,8 +1265,8 @@ components:
       properties:
         text:
           type: string
-          description: plain text (will be displayed "as is", no additional processing
-            will be made)
+          maxLength: 10000
+          description: plain text (will be displayed "as is", no additional processing will be made)
         is_private:
           type: boolean
           default: true
@@ -1182,6 +1302,11 @@ components:
         status:
           example: Active
           type: string
+          description: >
+            Connection status as exposed by this endpoint: `active` if the account is
+            currently connected and syncing, `disconnected` otherwise. This is a
+            deliberate binary — accounts that are internally suspended, banned, or
+            paused are all reported here as `disconnected`.
         owner_name:
           example: John Doe
           type: string
@@ -1191,6 +1316,8 @@ components:
         account_name:
           example: John Doe
           type: string
+          description: >
+            The account's WhatsApp profile (push) name; empty string if not set.
     WhatsappAccountItemV2:
       allOf:
         - $ref: '#/components/schemas/WhatsappAccountItem'
@@ -1199,6 +1326,9 @@ components:
             is_visible:
               example: true
               type: boolean
+              description: >
+                Whether the calling teammate has access to this WhatsApp account
+                under their permission scope.
     WhatsappAccountsList:
       type: object
       required:
@@ -1225,14 +1355,17 @@ components:
       properties:
         email:
           type: string
+          maxLength: 254
           description: Email address of the user to invite
           example: newuser@example.com
         first_name:
           type: string
+          maxLength: 150
           description: First name for the invited user
           example: John
         last_name:
           type: string
+          maxLength: 150
           description: Last name for the invited user
           example: Doe
         team_title:
@@ -1462,15 +1595,17 @@ components:
           example: https://acme.com/somefile.png
           type: string
         filename:
+          type: string
+          maxLength: 1024
           description: (optional) A filename, to be used instead of the original filename
             specified by the download URL.
           example: anotherfile.jpeg
-          type: string
         content_type:
+          type: string
+          maxLength: 140
           description: (optional) A mime-type of the file, to be used instead of the
             original filename specified by the download URL.
           example: image/jpeg
-          type: string
     FileUploadForm:
       type: object
       required:
@@ -1481,12 +1616,19 @@ components:
           type: string
           format: binary
         filename:
-          description: A filename.
-          example: somefile.jpeg
           type: string
+          maxLength: 1024
+          description: Explicit filename override. If omitted, use multipart filename.
+          example: "document.pdf"
         content_type:
-          description: A mime-type of the file.
           type: string
+          maxLength: 140
+          description: Optional MIME type of the uploaded file.
+        caption:
+          type: string
+          maxLength: 2000
+          description: Optional caption text to send together with the file.
+          example: "Here is the document you requested."
     VoiceMessageUploadForm:
       type: object
       required:
@@ -1503,21 +1645,24 @@ components:
       - url
       properties:
         event_type:
-          example: message:sent:new
-          type: string
-          description: 'Event topic that will trigger the webhook. For the current
-            list of supported values see TimelinesAI *Event Types* documentation at https://app.timelines.ai/integrations/webhooks_v2/swagger (for
-            example: `message:sent:new`, `message:received:new`).'
+          $ref: '#/components/schemas/WebhookEventType'
         enabled:
           example: true
           type: boolean
           description: Flag indicating whether the subscription is active. When **false**,
             deliveries are paused but the definition is kept.
         url:
-          example: http://www.example.com/api/hook
           type: string
-          description: Destination HTTPS endpoint that TimelinesAI will call. Must
-            be publicly accessible and respond with `2xx` status within 5 seconds.
+          maxLength: 4096
+          description: >
+            Destination HTTPS endpoint that TimelinesAI will call. Must be publicly accessible
+            and respond with `2xx` status within 5 seconds.
+            The URL must be a structurally valid `http(s)://` URL — TimelinesAI rejects
+            URLs that contain characters or shapes that would prevent a standard HTTP client
+            from dispatching to them (for example, unescaped `+` or `=` in the userinfo
+            portion). The validator runs on `POST /webhooks` and `PUT /webhooks/{id}`;
+            a malformed URL is rejected with `400 validation_error`.
+          example: http://www.example.com/api/hook
       description: A client‑defined subscription that instructs TimelinesAI to send
         an HTTP POST request to the specified **url** whenever the chosen **event_type**
         occurs in the workspace. The POST body is delivered as JSON and contains the
@@ -1526,18 +1671,24 @@ components:
       type: object
       properties:
         event_type:
-          example: message:sent:new
-          type: string
-          description: New event topic that will trigger the webhook.
+          $ref: '#/components/schemas/WebhookEventType'
         enabled:
           example: true
           type: boolean
           description: Set to **true** to resume deliveries or **false** to pause
             them.
         url:
-          example: http://www.example.com/api/hook
           type: string
-          description: New destination HTTPS endpoint.
+          maxLength: 4096
+          description: >
+            Destination HTTPS endpoint that TimelinesAI will call. Must be publicly accessible
+            and respond with `2xx` status within 5 seconds.
+            The URL must be a structurally valid `http(s)://` URL — TimelinesAI rejects
+            URLs that contain characters or shapes that would prevent a standard HTTP client
+            from dispatching to them (for example, unescaped `+` or `=` in the userinfo
+            portion). The validator runs on `POST /webhooks` and `PUT /webhooks/{id}`;
+            a malformed URL is rejected with `400 validation_error`.
+          example: http://www.example.com/api/hook
       description: Partial representation used to update an existing webhook. Any
         omitted field keeps its current value.
 # responses
@@ -1555,11 +1706,7 @@ components:
           type: integer
           description: Unique numeric identifier for the webhook (integer).
         event_type:
-          example: message:sent:new
-          type: string
-          description: 'Event topic that will trigger the webhook. For the current
-            list of supported values see TimelinesAI *Event Types* documentation (for
-            example: `message:sent:new`, `message:received:new`).'
+          $ref: '#/components/schemas/WebhookEventType'
         enabled:
           example: true
           type: boolean
@@ -1569,7 +1716,7 @@ components:
           example: http://www.example.com/api/hook
           type: string
           description: Destination HTTPS endpoint that TimelinesAI will call. Must
-            be publicly accessible and respond with `2xx` status within 5 seconds.
+            be publicly accessible and respond with `2xx` status within 5 seconds.
         errors_counter:
           example: 0
           type: integer
@@ -1578,6 +1725,29 @@ components:
             disable the webhook automatically.
       description: Server generated representation of a webhook subscription including
         its unique identifier and delivery error statistics.
+    WebhookEventType:
+      type: string
+      enum:
+        - message:new
+        - message:sent:new
+        - message:received:new
+        - whatsapp:account:connected
+        - whatsapp:account:disconnected
+        - whatsapp:account:suspended
+        - whatsapp:account:resumed
+        - chat:new
+        - chat:incoming:new
+        - chat:outgoing:new
+        - chat:responsible:assigned
+        - chat:responsible:unassigned
+        - call:incoming:missed
+        - call:incoming:ended
+        - call:outgoing:ended
+        - message:reaction
+      description: 'Event topic that will trigger the webhook. For the current
+        list of supported values see the [Webhooks events documentation](https://timelinesai.mintlify.dev/docs/webhook-reference/overview#available-events)
+        (for example: `message:sent:new`, `message:received:new`).'
+      example: message:sent:new
     WebhookInfoList:
       type: array
       items:
@@ -1613,6 +1783,40 @@ components:
           enum:
           - ok
           - error
+        error_code:
+          type: string
+          description: Stable, machine-readable error code. Use this for branching in client integrations.
+          example: validation_error
+          enum:
+            - missing_credentials      # 401 — Authorization header absent
+            - invalid_token            # 401 — token unknown/expired/revoked
+            - member_not_found         # 403 — token resolved but no workspace member
+            - permission_denied        # 403 — token resolved but caller lacks permission for the resource
+            - plan_feature_unavailable # 403 — workspace plan does not include the feature
+            - quota_exceeded           # 403/429 — quota for the period is used up
+            - rate_limit_exceeded      # 429 — short-term burst limit hit
+            - validation_error         # 400 — request body / params failed schema validation
+            - not_supported            # 405 — feature unavailable for this WhatsApp account (e.g. WABA-only operation on a QR account)
+            - internal_error           # 500 — unexpected server-side error
+        errors:
+          type: array
+          description: Per-field validation diagnostics. Present on `validation_error` responses; absent on auth/authorization/quota errors.
+          items:
+            $ref: '#/components/schemas/ValidationError'
+    ValidationError:
+      type: object
+      required: [fields, msg]
+      properties:
+        fields:
+          type: array
+          items: { type: string }
+          description: Path of the offending field, as a list of keys/indexes from the request root.
+          example: ["url"]
+        msg:
+          type: string
+          description: Validator message for that field.
+          example: must be a valid http(s) URL
+
     ChatListResponse:
       type: object
       required:
@@ -1766,6 +1970,9 @@ components:
           example: 👍
         current:
           type: boolean
+          description: True if the reaction was placed by the chat's contact (the remote end of a 1:1 conversation). 
+            False if placed by the workspace's own WhatsApp account, 
+            or in any group chat (groups have no single "remote contact" identity).
           example: true
     MessageSendResponse:
       type: object

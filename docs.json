@@ -87,6 +87,7 @@
               "public-api-reference/send-message-to-jid",
               "public-api-reference/send-message-in-existing-chat-specified-by-chat-name",
               "public-api-reference/post-chats-voice_message",
+              "public-api-reference/post-chats-file_message",
               "public-api-reference/add-a-note-to-existing-chat"
             ]
           },
