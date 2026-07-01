@@ -457,6 +457,7 @@ components:
         - direction
         - origin
         - timestamp
+        - received_timestamp
         - message_uid
         - sender
         - recipient
@@ -472,8 +473,13 @@ components:
           example: Public API
           type: string
         timestamp:
+          description: message creation timestamp, WhatsApp message time
+          example: 2023-06-18 15:19:23 +0300
           type: string
-          example: 2024-01-08 10:35:18 +0200
+        received_timestamp:
+          description: message creation timestamp in TimelinesAI, in ISO format with timezone
+          example: 2023-06-18 14:39:25 +0300
+          type: string
         message_uid:
           type: string
           example: c7ec509d-0171-1ead-a84b-c6943a644768
@@ -854,7 +860,7 @@ components:
         emoji:
           type: string
           description: Emoji reaction
-          example: "ЁЯСН"
+          example: "👍"
         reactor:
           $ref: '#/components/schemas/ReactorInfo'
         timestamp:
@@ -866,5 +872,5 @@ components:
           additionalProperties:
             type: integer
           example:
-            ЁЯСН: 2
-            тЭдя╕П: 1
+            👍: 2
+            ❤️: 1

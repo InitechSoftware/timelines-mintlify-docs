@@ -15,7 +15,7 @@ info:
     the capabilities of the Public API such as webhook subscriptions, enables partners
     to build complex integrations for their customers.
 servers:
-- url: https://app.timelines.ai/partner/api/v1
+- url: /partner/api/v1
   description: Partner API root URL
 security:
 - bearerAuth: []
@@ -347,7 +347,7 @@ components:
           description: Workspace display name
           example: my-first-workspace (must contain only letters, digits and dash)
           minLength: 1
-          maxLength: 30
+          maxLength: 100
         seats_purchased:
           type: integer
           description: Number of workspace seats
@@ -472,7 +472,7 @@ components:
           description: New workspace display name
           example: updated-workspace-name
           minLength: 1
-          maxLength: 30
+          maxLength: 100
         seats_purchased:
           type: integer
           description: New number of workspace seats
