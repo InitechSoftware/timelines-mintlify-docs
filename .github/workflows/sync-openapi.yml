@@ -98,6 +98,8 @@ jobs:
           rewrite_server_url openapi/partner_api_spec.yaml "/partner/api/v1"   "https://app.timelines.ai/partner/api/v1"
 
       - name: Commit and push if changed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -108,4 +110,6 @@ jobs:
           fi
           git add openapi/
           git commit -m "Sync OpenAPI specs from timelines@${{ inputs.source_ref }} (servers URL patched absolute)"
-          git push
+          # Authenticate the push explicitly with GITHUB_TOKEN (the second checkout
+          # can disturb the checkout-persisted credentials), then push.
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:${GITHUB_REF_NAME}"
