@@ -1,0 +1,102 @@
+name: sync-openapi
+
+# Pulls the OpenAPI specs from the private InitechSoftware/timelines repo into
+# this repo, rewrites the `servers` URL to an absolute URL (Mintlify requires
+# an absolute base URL to build the API playground request examples), commits,
+# and pushes. Mintlify auto-deploys on push to the default branch.
+#
+# Why the rewrite: the source specs in `timelines` intentionally use a RELATIVE
+# `servers` URL (e.g. /integrations/api) so the same YAML works for the in-app
+# Swagger UI across environments. Mintlify resolves relative server URLs against
+# the docs host (not the API host), so the playground breaks with
+# "A valid request URL is required to generate request example". We therefore
+# rewrite to the absolute production URL in this repo's copy only.
+#
+# Auth: uses the repo secret TIMELINES_RO_TOKEN, a fine-grained PAT with
+# read-only Contents access to InitechSoftware/timelines. Rotate before expiry.
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: "timelines branch/ref to pull specs from"
+        required: true
+        default: "production"
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout docs repo
+        uses: actions/checkout@v4
+
+      - name: Fetch OpenAPI specs from timelines
+        env:
+          TIMELINES_RO_TOKEN: ${{ secrets.TIMELINES_RO_TOKEN }}
+          SOURCE_REF: ${{ inputs.source_ref }}
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          git clone --depth 1 --branch "$SOURCE_REF" \
+            "https://x-access-token:${TIMELINES_RO_TOKEN}@github.com/InitechSoftware/timelines.git" \
+            "$tmp"
+          cp "$tmp/timelines/public_api/public_api_spec.yaml"          openapi/public_api_spec.yaml
+          cp "$tmp/timelines/webhook/webhook_spec.yaml"                openapi/webhook_spec.yaml
+          cp "$tmp/timelines/partner_api/partner_api_spec.yaml"        openapi/partner_api_spec.yaml
+          cp "$tmp/timelines/partner_api/partner_api_webhook_spec.yaml" openapi/partner_api_webhook_spec.yaml
+          rm -rf "$tmp"
+
+      - name: Rewrite servers URL to absolute (Mintlify playground)
+        run: |
+          set -euo pipefail
+
+          # Rewrites the relative `servers` URL to absolute and verifies the result,
+          # failing the job (never silently shipping) if the expected line is missing.
+          # Args: <spec file> <relative url> <absolute url>
+          rewrite_server_url() {
+            local file="$1" rel="$2" abs="$3"
+            local rel_line="- url: ${rel}"
+            local abs_line="- url: ${abs}"
+
+            # Pre-check: the spec must contain either the known relative form (to be
+            # rewritten) or the already-absolute form (idempotent re-run). If neither
+            # is present, the upstream `servers` line was reformatted or the path
+            # changed — fail loudly instead of shipping a spec with no valid base URL.
+            if ! grep -qF -- "${rel_line}" "${file}" && ! grep -qF -- "${abs_line}" "${file}"; then
+              echo "::error file=${file}::servers URL rewrite failed: neither '${rel_line}' nor '${abs_line}' found. The upstream 'servers' line likely changed format/path and the rewrite must be updated." >&2
+              return 1
+            fi
+
+            # Idempotent: only the exact relative form is matched; a no-op once absolute.
+            sed -i "s#^${rel_line}\$#${abs_line}#" "${file}"
+
+            # Post-check: the absolute line must now be present AND the relative line gone.
+            if ! grep -qF -- "${abs_line}" "${file}"; then
+              echo "::error file=${file}::servers URL rewrite failed: absolute URL '${abs_line}' not present after sed." >&2
+              return 1
+            fi
+            if grep -qF -- "${rel_line}" "${file}"; then
+              echo "::error file=${file}::servers URL rewrite failed: relative URL '${rel_line}' still present after sed." >&2
+              return 1
+            fi
+            echo "OK: ${file} -> ${abs_line}"
+          }
+
+          rewrite_server_url openapi/public_api_spec.yaml  "/integrations/api" "https://app.timelines.ai/integrations/api"
+          rewrite_server_url openapi/partner_api_spec.yaml "/partner/api/v1"   "https://app.timelines.ai/partner/api/v1"
+
+      - name: Commit and push if changed
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- openapi/; then
+            echo "No spec changes — nothing to commit."
+            exit 0
+          fi
+          git add openapi/
+          git commit -m "Sync OpenAPI specs from timelines@${{ inputs.source_ref }} (servers URL patched absolute)"
+          git push
