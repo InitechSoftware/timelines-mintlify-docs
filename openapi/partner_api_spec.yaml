@@ -15,7 +15,7 @@ info:
     the capabilities of the Public API such as webhook subscriptions, enables partners
     to build complex integrations for their customers.
 servers:
-- url: /partner/api/v1
+- url: https://app.timelines.ai/partner/api/v1
   description: Partner API root URL
 security:
 - bearerAuth: []
