@@ -35,7 +35,7 @@ jobs:
 
       - name: Fetch OpenAPI specs from timelines
         env:
-          GH_TOKEN: ${{ secrets.TIMELINES_RO_TOKEN }}
+          TIMELINES_RO_TOKEN: ${{ secrets.TIMELINES_RO_TOKEN }}
           SOURCE_REF: ${{ inputs.source_ref }}
         run: |
           set -euo pipefail
@@ -44,8 +44,16 @@ jobs:
           # credential clobbering caused by a second actions/checkout.
           fetch() {
             local src="$1" dest="$2"
-            gh api "repos/InitechSoftware/timelines/contents/${src}?ref=${SOURCE_REF}" \
-              -H "Accept: application/vnd.github.raw" > "$dest"
+            local code
+            code=$(curl -sSL -w '%{http_code}' -o "$dest" \
+              -H "Authorization: Bearer ${TIMELINES_RO_TOKEN}" \
+              -H "Accept: application/vnd.github.raw" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/InitechSoftware/timelines/contents/${src}?ref=${SOURCE_REF}")
+            if [ "$code" != "200" ]; then
+              echo "::error::fetch of ${src} failed with HTTP ${code}" >&2
+              return 1
+            fi
             # Guard: a failed/empty fetch must not overwrite a good spec.
             test -s "$dest"
           }
