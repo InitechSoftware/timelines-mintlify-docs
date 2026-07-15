@@ -33,30 +33,26 @@ jobs:
       - name: Checkout docs repo
         uses: actions/checkout@v4
 
-      - name: Checkout timelines specs (read-only)
-        uses: actions/checkout@v4
-        with:
-          repository: InitechSoftware/timelines
-          ref: ${{ inputs.source_ref }}
-          token: ${{ secrets.TIMELINES_RO_TOKEN }}
-          path: .timelines-src
-          persist-credentials: false
-          sparse-checkout: |
-            timelines/public_api/public_api_spec.yaml
-            timelines/webhook/webhook_spec.yaml
-            timelines/partner_api/partner_api_spec.yaml
-            timelines/partner_api/partner_api_webhook_spec.yaml
-          sparse-checkout-cone-mode: false
-
-      - name: Copy specs into openapi/
+      - name: Fetch OpenAPI specs from timelines
+        env:
+          GH_TOKEN: ${{ secrets.TIMELINES_RO_TOKEN }}
+          SOURCE_REF: ${{ inputs.source_ref }}
         run: |
           set -euo pipefail
-          src=.timelines-src/timelines
-          cp "$src/public_api/public_api_spec.yaml"          openapi/public_api_spec.yaml
-          cp "$src/webhook/webhook_spec.yaml"                openapi/webhook_spec.yaml
-          cp "$src/partner_api/partner_api_spec.yaml"        openapi/partner_api_spec.yaml
-          cp "$src/partner_api/partner_api_webhook_spec.yaml" openapi/partner_api_webhook_spec.yaml
-          rm -rf .timelines-src
+          # Fetch each spec via the Contents API (raw) using the read-only PAT.
+          # Avoids git-over-HTTPS credential quirks with fine-grained PATs and the
+          # credential clobbering caused by a second actions/checkout.
+          fetch() {
+            local src="$1" dest="$2"
+            gh api "repos/InitechSoftware/timelines/contents/${src}?ref=${SOURCE_REF}" \
+              -H "Accept: application/vnd.github.raw" > "$dest"
+            # Guard: a failed/empty fetch must not overwrite a good spec.
+            test -s "$dest"
+          }
+          fetch timelines/public_api/public_api_spec.yaml           openapi/public_api_spec.yaml
+          fetch timelines/webhook/webhook_spec.yaml                 openapi/webhook_spec.yaml
+          fetch timelines/partner_api/partner_api_spec.yaml         openapi/partner_api_spec.yaml
+          fetch timelines/partner_api/partner_api_webhook_spec.yaml openapi/partner_api_webhook_spec.yaml
 
       - name: Rewrite servers URL to absolute (Mintlify playground)
         run: |
@@ -110,6 +106,5 @@ jobs:
           fi
           git add openapi/
           git commit -m "Sync OpenAPI specs from timelines@${{ inputs.source_ref }} (servers URL patched absolute)"
-          # Authenticate the push explicitly with GITHUB_TOKEN (the second checkout
-          # can disturb the checkout-persisted credentials), then push.
+          # Push using GITHUB_TOKEN explicitly (write access to this repo).
           git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:${GITHUB_REF_NAME}"
