@@ -148,6 +148,66 @@
         ]
       },
       {
+        "tab": "WABA API",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "public-api-reference/waba/overview"
+            ]
+          },
+          {
+            "group": "Chats",
+            "pages": [
+              "public-api-reference/waba/get-full-or-filtered-list-of-all-waba-chats-in-the-workspace",
+              "public-api-reference/waba/get-details-of-a-waba-chat",
+              "public-api-reference/waba/update-waba-chat"
+            ]
+          },
+          {
+            "group": "Messages",
+            "pages": [
+              "public-api-reference/waba/get-filtered-waba-chat-history-messages-only-of-the-chat",
+              "public-api-reference/waba/send-waba-message-in-existing-chat",
+              "public-api-reference/waba/send-waba-message-to-phone-number",
+              "public-api-reference/waba/get-the-details-of-a-waba-message-specified-by-the-messages-uid",
+              "public-api-reference/waba/get-the-sending-history-of-a-waba-message-specified-by-the-messages-uid"
+            ]
+          },
+          {
+            "group": "Reactions",
+            "pages": [
+              "public-api-reference/waba/get-the-current-reaction-for-a-waba-message",
+              "public-api-reference/waba/set-or-clear-the-reaction-for-a-waba-message"
+            ]
+          },
+          {
+            "group": "Labels",
+            "pages": [
+              "public-api-reference/waba/list-labels-for-the-specified-waba-chat",
+              "public-api-reference/waba/replaces-labels-for-the-waba-chat",
+              "public-api-reference/waba/adds-labels-for-the-waba-chat"
+            ]
+          },
+          {
+            "group": "WABA Accounts",
+            "pages": [
+              "public-api-reference/waba/get-the-list-of-all-waba-accounts-in-the-workspace",
+              "public-api-reference/waba/get-details-of-a-waba-account",
+              "public-api-reference/waba/request-waba-account-analytics",
+              "public-api-reference/waba/poll-a-waba-account-analytics-request"
+            ]
+          },
+          {
+            "group": "Templates",
+            "pages": [
+              "public-api-reference/waba/get-the-list-of-all-waba-templates-in-the-workspace",
+              "public-api-reference/waba/get-details-of-a-waba-template"
+            ]
+          }
+        ]
+      },
+      {
         "tab": "Public API Webhooks",
         "groups": [
           {
