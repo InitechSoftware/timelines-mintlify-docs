@@ -17,7 +17,8 @@ info:
     \ quota.\n  \n### Authorization:\n  - Copy API token from [Public API page](https://app.timelines.ai/integrations/api/)\
     \ in your TimelinesAI account.\n  - Put the token in *Authorization* header of\
     \ request as follows:\n  ```\n  Authorization: Bearer 4d2d0239-e28c-4f4a-8a4d-3a3ca40056b8\n\
-    \  ```\n        \n### Message formatting:\n  - use \"\\n\" for line breaks\n"
+    \  ```\n        \n### Message formatting:\n  - use \"\\n\" for line breaks\n\
+    \n### Input strings:\n  - String fields must not contain the NUL character (U+0000).\n"
   version: 1.3.0
 servers:
 - url: https://app.timelines.ai/integrations/api
@@ -136,6 +137,23 @@ paths:
         description: filter chats that were created before this timestamp, can be
           specified with created_after
         example: '2024-12-31T23:59:59Z'
+      - in: query
+        name: whatsapp_phone
+        schema:
+          type: string
+        description: Filter chats by contact phone number(s) (comma-separated).
+          Each number is matched both against the direct chat's phone (tolerating
+          a leading `0` in place of the country code, or an already-international
+          number) and against group membership, so groups containing a matching
+          member are included too.
+        example: '+15551230000,0501111111'
+      - in: query
+        name: with_msg
+        schema:
+          type: boolean
+        description: when true, include the full last_message object (in addition
+          to last_message_uid / last_message_timestamp) for each chat.
+        example: true
       responses:
         '200':
           description: Success
@@ -330,7 +348,9 @@ paths:
         <<: *http_errors_common
     post:
       summary: Replaces labels for the chat.
-      description: ''
+      description: >
+        Replaces the chat's entire label set with the supplied list. Label names
+        that do not exist in the workspace are created automatically.
       parameters:
       - $ref: '#/components/parameters/chat_id'
       requestBody:
@@ -350,7 +370,9 @@ paths:
         <<: *http_errors_common
     put:
       summary: Adds labels for the chat.
-      description: ''
+      description: >
+        Adds the supplied labels to the chat, keeping any already applied. Label
+        names that do not exist in the workspace are created automatically.
       parameters:
       - $ref: '#/components/parameters/chat_id'
       requestBody:
@@ -367,6 +389,475 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/LabelsModifyResponse'
+        <<: *http_errors_common
+  /waba/chats:
+    get:
+      summary: Get full or filtered list of all WABA chats in the Workspace.
+      description: Leave filtering parameters empty to get the unfiltered list.
+      parameters:
+      - in: query
+        name: waba_account_id
+        schema:
+          type: string
+        description: filters WABA chats belonging to one of the specified WABA accounts
+          (comma-separated internal account ids)
+        example: 4021,4022
+      - in: query
+        name: responsible
+        schema:
+          type: string
+        description: filters chats assigned to specific users (denoted by email address,
+          comma-separated)
+        example: john.doe@acme.com,anna.smith@acme.com
+      - in: query
+        name: closed
+        schema:
+          type: boolean
+        description: filter chats that are either closed (true) or open (false)
+      - in: query
+        name: whatsapp_phone
+        schema:
+          type: string
+        description: filter WABA chats by contact phone number
+        example: '+15551230000'
+      - in: query
+        name: page
+        schema:
+          type: integer
+        description: specify the page of results (each page contains up to 50 items),
+          starting with 1. Check "has more page" response value to see if more pages
+          are available.
+        example: 1
+      - in: query
+        name: with_msg
+        schema:
+          type: boolean
+        description: when true, include the full last_message object (in addition
+          to last_message_uid / last_message_timestamp) for each chat.
+        example: true
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WabaChatListResponse'
+        <<: *http_errors_common
+  /waba/chats/{chat_id}:
+    get:
+      summary: Get details of a WABA chat
+      description: >
+        Returns a single WABA chat by its internal `id`. WABA chats are subject
+        to Meta's 24-hour customer service window, whose current state is
+        exposed on the chat and governs whether free-text (non-template) sends
+        are currently allowed.
+      parameters:
+      - $ref: '#/components/parameters/chat_id'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WabaChatInfoResponse'
+        <<: *http_errors_common
+    patch:
+      summary: Update WABA chat
+      description: Update WABA chat's name, assign responsible (by email), close / re-open, or mark read / unread.
+      parameters:
+      - $ref: '#/components/parameters/chat_id'
+      requestBody:
+        description: ''
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WabaChatDetails'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WabaChatInfoResponse'
+        <<: *http_errors_common
+  /waba/chats/{chat_id}/labels:
+    get:
+      summary: List labels for the specified WABA chat.
+      description: Returns the list of labels currently applied to the WABA chat.
+      parameters:
+      - $ref: '#/components/parameters/chat_id'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabelsModifyResponse'
+        <<: *http_errors_common
+    post:
+      summary: Replaces labels for the WABA chat.
+      description: >
+        Replaces the WABA chat's entire label set with the supplied list. Label
+        names that do not exist in the workspace are created automatically.
+      parameters:
+      - $ref: '#/components/parameters/chat_id'
+      requestBody:
+        description: ''
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LabelsList'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabelsModifyResponse'
+        <<: *http_errors_common
+    put:
+      summary: Adds labels for the WABA chat.
+      description: >
+        Adds the supplied labels to the WABA chat, keeping any already applied.
+        Label names that do not exist in the workspace are created automatically.
+      parameters:
+      - $ref: '#/components/parameters/chat_id'
+      requestBody:
+        description: ''
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LabelsList'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabelsModifyResponse'
+        <<: *http_errors_common
+  /waba/chats/{chat_id}/messages:
+    get:
+      summary: Get filtered chat history (messages only) of a WABA chat
+      description: Leave filtering parameters empty to get the unfiltered list of
+        all messages in the specified chat. When multiple filtering parameters are
+        specified, logical AND operation is applied. The result is paginated, page
+        size is 50 records. The result is ordered by the timestamp of messages (descending).
+      parameters:
+      - $ref: '#/components/parameters/chat_id'
+      - in: query
+        name: from_me
+        schema:
+          type: boolean
+        description: specify true to filter messages sent from the WABA account,
+          false to filter messages received from the contact.
+        example: true
+      - in: query
+        name: after
+        schema:
+          type: string
+        description: can specify date or datetime in ISO format to filter out messages
+          created AFTER the specified date (inclusive)
+        example: 2024-01-17 10:35
+      - in: query
+        name: before
+        schema:
+          type: string
+        description: can specify date or datetime in ISO format to filter out messages
+          created BEFORE the specified date (inclusive)
+        example: 2024-01-19 15:30
+      - in: query
+        name: after_message
+        schema:
+          type: string
+        description: can specify message uid to filter out messages created after
+          the specified message (excluding the specified message itself)
+        example: d8cc5a02-b676-4956-8710-3ee56330f356
+      - in: query
+        name: before_message
+        schema:
+          type: string
+        description: can specify message uid to filter out messages created before
+          the specified message (excluding the specified message itself)
+        example: d8cc5a02-b676-4956-8710-3ee56330f356
+      - in: query
+        name: sorting_order
+        schema:
+          type: string
+          enum:
+            - asc
+            - desc
+        description: 'order messages by timestamp, according to possible values: asc, desc'
+        example: asc
+      - in: query
+        name: page
+        schema:
+          type: integer
+        description: specify the page of results, starting with 1. Check "has more
+          page" response value to see if more pages are available.
+        example: 1
+      - in: query
+        name: size
+        schema:
+          type: integer
+        description: override the default page size (50).
+        example: 50
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageListResponse'
+        <<: *http_errors_common
+    post:
+      summary: Send a WABA message in an existing chat
+      description: >
+        Send a free-text message, a file, or a template message into an existing
+        WABA chat specified by chat_id. A template message must not be combined
+        with text, file, or file_uid. Free-text and file messages are rejected
+        with `service_window_closed` if sent outside the 24h customer service window.
+      parameters:
+      - $ref: '#/components/parameters/chat_id'
+      requestBody:
+        description: A JSON describing the message payload, or a multipart/form-data
+          upload of a file with an optional text caption.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WabaOutboundMessage'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WabaOutboundMessageForm'
+      responses:
+        '200':
+          description: Message accepted for async sending
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageInfoResponse'
+        <<: *http_errors_common
+  /waba/accounts:
+    get:
+      summary: Get the list of all WABA accounts in the Workspace.
+      description: >
+        Returns every WhatsApp Business (WABA) account connected to the
+        workspace. WABA accounts are workspace-global assets — visible to any
+        active member regardless of role — and each account's `id` is the
+        handle used to address it across the other WABA endpoints.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WabaAccountsResponse'
+        <<: *http_errors_common
+  /waba/accounts/{account_id}:
+    get:
+      summary: Get details of a WABA account
+      description: >
+        Returns the full detail of a single WABA account by its internal `id`,
+        including the Meta cross-reference handles for looking the account up in
+        Meta's Business Manager.
+      parameters:
+      - $ref: '#/components/parameters/waba_account_id'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WabaAccountDetailResponse'
+        <<: *http_errors_common
+  /waba/accounts/{account_id}/analytics:
+    post:
+      summary: Request WABA account analytics
+      description: >
+        Requests message volume and pricing-category breakdowns for the WABA
+        account. You supply only a date range and, optionally, which pricing
+        breakdowns you want; the server builds and runs the correct queries.
+        Analytics are computed asynchronously — poll
+        `GET /waba/accounts/{account_id}/analytics/{handle_id}` with the returned
+        `handle` until `state` is `ready` or `error`. An identical request that
+        is already in flight (or completed) returns the cached result immediately
+        instead of starting a new one.
+
+
+        Notes: cost figures are not available for these accounts and are never
+        returned; conversation analytics are not exposed.
+      parameters:
+      - $ref: '#/components/parameters/waba_account_id'
+      requestBody:
+        description: Analytics request parameters.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WabaAnalyticsRequest'
+      responses:
+        '202':
+          description: Analytics request accepted (or already in progress / cached)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WabaAnalyticsResponse'
+        <<: *http_errors_common
+  /waba/accounts/{account_id}/analytics/{handle_id}:
+    get:
+      summary: Poll a WABA account analytics request
+      description: >
+        Polls the state of an analytics request previously created via
+        `POST /waba/accounts/{account_id}/analytics`. The handle is scoped to
+        the workspace; `account_id` is accepted for URL symmetry but is not
+        used to further scope the lookup.
+      parameters:
+      - $ref: '#/components/parameters/waba_account_id'
+      - $ref: '#/components/parameters/waba_analytics_handle_id'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WabaAnalyticsResponse'
+        <<: *http_errors_common
+  /waba/messages:
+    post:
+      summary: Send a WABA message to a phone number
+      description: >
+        Send a free-text message, a file, or a template message to a WABA contact
+        by phone number (doesn't require an existing chat). `waba_account_id` and
+        `phone` are required. A template message must not be combined with text,
+        file, or file_uid. Free-text and file messages are rejected with
+        `service_window_closed` if sent outside the 24h customer service window.
+      requestBody:
+        description: A JSON describing the recipient and message payload, or a
+          multipart/form-data upload of a file with an optional text caption.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WabaOutboundMessage'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WabaOutboundMessageForm'
+      responses:
+        '200':
+          description: Message accepted for async sending
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageInfoResponse'
+        <<: *http_errors_common
+  /waba/messages/{message_uid}:
+    get:
+      summary: Get the details of a WABA message specified by the message's UID.
+      description: Returns a single WABA message by its `uid`.
+      parameters:
+      - $ref: '#/components/parameters/message_uid'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageInfoResponse'
+        <<: *http_errors_common
+  /waba/messages/{message_uid}/status_history:
+    get:
+      summary: Get the sending history of a WABA message, specified by the message's UID.
+      description: >
+        Returns the delivery-status history for a WABA message — the ordered
+        status transitions the message went through, with their timestamps.
+      parameters:
+      - $ref: '#/components/parameters/message_uid'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageStatusHistoryResponse'
+        <<: *http_errors_common
+  /waba/messages/{message_uid}/reactions:
+    get:
+      summary: Get the current reaction for a WABA message.
+      description: Returns the current reactions on the WABA message.
+      parameters:
+      - $ref: '#/components/parameters/message_uid'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageReactionsResponse'
+        <<: *http_errors_common
+    patch:
+      summary: Set or clear the reaction for a WABA message.
+      description: Set a single reaction, or clear the current reaction by passing
+        an empty string.
+      parameters:
+      - $ref: '#/components/parameters/message_uid'
+      requestBody:
+        description: A JSON describing the reaction to set, or an empty string to clear it.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageReactionSetRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReactionsSetResponse'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        <<: *http_errors_common
+  /waba/templates:
+    get:
+      summary: Get the list of all WABA templates in the Workspace.
+      description: Not filtered. The result is paginated, page size is 50 records,
+        ordered by creation time (descending).
+      parameters:
+      - in: query
+        name: page
+        schema:
+          type: integer
+        description: specify the page of results (each page contains up to 50 items),
+          starting with 1. Check "has more page" response value to see if more pages
+          are available.
+        example: 1
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WabaTemplateListResponse'
+        <<: *http_errors_common
+  /waba/templates/{template_id}:
+    get:
+      summary: Get details of a WABA template
+      description: >
+        Returns a single WABA template by its internal `id`, mirroring Meta's
+        template definition and listing the WABA accounts it can be used with.
+      parameters:
+      - $ref: '#/components/parameters/waba_template_id'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WabaTemplateDetailResponse'
         <<: *http_errors_common
   /chats/{chat_id}/notes:
     post:
@@ -791,6 +1282,376 @@ paths:
         '200':
           description: Success
         <<: *http_errors_common
+  /templates:
+    get:
+      summary: List templates
+      description: >-
+        Returns all templates visible to the current user, ordered by
+        **updated_at** descending. Not paginated, not filtered. The response keeps
+        the same top-level shape as `GET /v2/templates`: `data.templates_count`
+        and `data.templates`.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateListResponse'
+        <<: *http_errors_common
+    post:
+      summary: Create template
+      description: |
+        Creates a new text template. Duplicate names are allowed.
+
+        `team_title` controls which team the template is shared with: omit it to share with all teams, pass `"Default"` for the workspace's default team, or pass an existing team's title (see `GET /workspace/teammates` for valid team titles).
+
+        Without the `MANAGE_ALL_TEMPLATES` permission, the template is always created in the caller's own team regardless of the requested `team_title`.
+      requestBody:
+        description: A JSON describing the template.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TemplateCreate'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateInfoResponse'
+        <<: *http_errors_common
+  /templates/{template_id}:
+    get:
+      summary: Get template
+      description: Retrieves the template identified by **template_id**. Returns
+        `404` both when the template does not exist and when it exists outside of
+        the caller's visibility scope.
+      parameters:
+      - $ref: '#/components/parameters/template_id'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateInfoResponse'
+        <<: *http_errors_common
+    patch:
+      summary: Update template
+      description: |
+        Partially updates the template identified by **template_id**. Only properties supplied in the request body are changed; pass `team_title: null` explicitly to reset the template to "all teams".
+
+        Requires the template's `can_be_edited` rule to pass, otherwise `403`. Changing `team_title` to anything other than the caller's own team additionally requires `MANAGE_ALL_TEMPLATES`, otherwise `403`.
+      parameters:
+      - $ref: '#/components/parameters/template_id'
+      requestBody:
+        description: A JSON describing the template fields to update.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TemplateUpdate'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateInfoResponse'
+        <<: *http_errors_common
+    delete:
+      summary: Delete template
+      description: Permanently deletes the template identified by **template_id**,
+        subject to the template's `can_be_deleted` rule (`403` otherwise).
+      parameters:
+      - $ref: '#/components/parameters/template_id'
+      responses:
+        '200':
+          description: Success
+        <<: *http_errors_common
+  /templates/{template_id}/track_usage:
+    post:
+      summary: Track template usage
+      description: Records a usage event for the template identified by **template_id**
+        and emits the `TEMPLATE_SELECTED` analytics event. Each call creates a new
+        usage record; there is no deduplication. Subject to the template's `can_be_used`
+        rule (`403` otherwise).
+      parameters:
+      - $ref: '#/components/parameters/template_id'
+      requestBody:
+        description: Optional origin label, forwarded into the analytics event.
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                origin:
+                  type: string
+                  example: Chat View
+      responses:
+        '200':
+          description: Success
+        <<: *http_errors_common
+  /v2/chats:
+    get:
+      summary: Get full or filtered list of all chats in the Workspace (v2).
+      description: >
+        Behaves like `GET /chats`, using the same filters and the same `ChatInfo`
+        shape, but scopes the result to chats the caller's own workspace membership
+        has access to (rather than the workspace-wide list returned by v1).
+      parameters:
+      - in: query
+        name: label
+        schema:
+          type: string
+        description: filters chats having at least one of specified labels (comma-separated)
+        example: customer1,customer2,customer3
+      - in: query
+        name: whatsapp_account_id
+        schema:
+          type: string
+        description: filters chats belonging to one of the specified WhatsApp accounts
+          (in wid format, comma-separated)
+        example: 972501111111@s.whatsapp.net,972502222222@s.whatsapp.net
+      - in: query
+        name: group
+        schema:
+          type: boolean
+        description: filters chats that are either group chats (true) or direct chats (false)
+      - in: query
+        name: responsible
+        schema:
+          type: string
+        description: filters chats assigned to specific users (denoted by email address,
+          comma-separated)
+        example: john.doe@acme.com,anna.smith@acme.com
+      - in: query
+        name: name
+        schema:
+          type: string
+        description: 'filter chats that contain any of specified strings (case-insensitive,
+          comma-separated). Note: a string containing a whitespace will be matched
+          as exact substring without being split to words.'
+        example: acme sales,contacts
+      - in: query
+        name: read
+        schema:
+          type: boolean
+        description: filter chats that are either read (true) or unread (false)
+      - in: query
+        name: closed
+        schema:
+          type: boolean
+        description: filter chats that are either closed (true) or open (false)
+      - in: query
+        name: chatgpt_autoresponse_enabled
+        schema:
+          type: boolean
+        description: filter chats where chatgpt auto-response is enabled (true) or
+          disabled (false)
+      - in: query
+        name: page
+        schema:
+          type: integer
+        description: specify the page of results (each page contains up to 50 items),
+          starting with 1. Check "has more page" response value to see if more pages
+          are available.
+        example: 1
+      - in: query
+        name: created_after
+        schema:
+          type: string
+          format: date-time
+        description: filter chats that were created after this timestamp, can be specified
+          with created_before
+        example: '2024-12-31T23:59:59Z'
+      - in: query
+        name: created_before
+        schema:
+          type: string
+          format: date-time
+        description: filter chats that were created before this timestamp, can be
+          specified with created_after
+        example: '2024-12-31T23:59:59Z'
+      - in: query
+        name: whatsapp_phone
+        schema:
+          type: string
+        description: Filter chats by contact phone number(s) (comma-separated).
+          Each number is matched both against the direct chat's phone (tolerating
+          a leading `0` in place of the country code, or an already-international
+          number) and against group membership, so groups containing a matching
+          member are included too.
+        example: '+15551230000,0501111111'
+      - in: query
+        name: with_msg
+        schema:
+          type: boolean
+        description: when true, include the full last_message object (in addition
+          to last_message_uid / last_message_timestamp) for each chat.
+        example: true
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatListResponse'
+        <<: *http_errors_common
+  /v2/chats/{chat_id}/messages:
+    get:
+      summary: Get filtered chat history (messages only) of the chat (v2)
+      description: Identical behavior to `GET /chats/{chat_id}/messages`.
+      parameters:
+      - $ref: '#/components/parameters/chat_id'
+      - in: query
+        name: from_me
+        schema:
+          type: boolean
+        description: specify true to filter messages sent from my WhatsApp account
+          (from any session), false to filter messages received from other WhatsApp
+          users.
+        example: true
+      - in: query
+        name: after
+        schema:
+          type: string
+        description: can specify date or datetime in ISO format to filter out messages
+          created AFTER the specified date (inclusive)
+        example: 2024-01-17 10:35
+      - in: query
+        name: before
+        schema:
+          type: string
+        description: can specify date or datetime in ISO format to filter out messages
+          created BEFORE the specified date (inclusive)
+        example: 2024-01-19 15:30
+      - in: query
+        name: after_message
+        schema:
+          type: string
+        description: can specify message uid to filter out messages created after
+          the specified message (excluding the specified message itself)
+        example: d8cc5a02-b676-4956-8710-3ee56330f356
+      - in: query
+        name: before_message
+        schema:
+          type: string
+        description: can specify message uid to filter out messages created before
+          the specified message (excluding the specified message itself)
+        example: d8cc5a02-b676-4956-8710-3ee56330f356
+      - in: query
+        name: sorting_order
+        schema:
+          type: string
+          enum:
+            - asc
+            - desc
+        description: 'order messages by timestamp, according to possible values: asc, desc'
+        example: asc
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageListResponse'
+        <<: *http_errors_common
+    post:
+      summary: Send message in existing chat (v2)
+      description: >
+        Same as `POST /chats/{chat_id}/messages`, except the request body does not
+        support `reply_to`.
+      parameters:
+      - $ref: '#/components/parameters/chat_id'
+      requestBody:
+        description: A JSON describing recipient and message payload.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Message'
+      responses:
+        '200':
+          description: Message accepted for async sending
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageSendResponse'
+        <<: *http_errors_common
+  /v2/messages:
+    post:
+      summary: Send message to phone number (v2)
+      description: Identical behavior to `POST /messages`.
+      requestBody:
+        description: A JSON describing recipient and message payload.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageToPhone'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageSendResponse'
+        <<: *http_errors_common
+  /v2/whatsapp_accounts:
+    get:
+      summary: Get the list of all WhatsApp accounts in the Workspace (v2).
+      description: >
+        Like `GET /whatsapp_accounts`, with an added `is_visible` flag reflecting
+        whether the caller's own workspace membership has access to each account.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WhatsappAccountsResponseV2'
+        <<: *http_errors_common
+  /v2/templates:
+    get:
+      summary: Get the list of all legacy templates in the Workspace (v2).
+      description: >
+        Legacy template listing, kept for backward compatibility. Returns a richer,
+        internal representation (`can_be_edited`, `can_be_deleted`, `team_any`,
+        `sample_data`, `variable_source`, `attachment`) than `GET /templates`. New
+        integrations should prefer `GET /templates`.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateListResponseV2'
+        <<: *http_errors_common
+    post:
+      summary: Track legacy template usage (v2)
+      description: >
+        Records a usage event for the template identified by `template_id` and
+        emits the `TEMPLATE_SELECTED` analytics event, tagged with `origin`. Unlike
+        other Public API responses, this returns a bare `{"success": true}` body,
+        not the standard `{status, data}` envelope.
+      requestBody:
+        description: A JSON identifying the template and the calling UI surface.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TemplateTrackUsageV2Request'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleSuccessResponse'
+        <<: *http_errors_common
 components:
   parameters:
     chat_id:
@@ -838,6 +1699,41 @@ components:
         type: string
       required: true
       example: '7654321'
+    template_id:
+      description: an ID of the template
+      in: path
+      name: template_id
+      schema:
+        type: integer
+      required: true
+      example: 501
+    waba_account_id:
+      description: an internal id of the WABA account (the only value used to address
+        this account)
+      in: path
+      name: account_id
+      schema:
+        type: integer
+      required: true
+      example: 4021
+    waba_template_id:
+      description: an internal id of the WABA template (the only value used to
+        address this template)
+      in: path
+      name: template_id
+      schema:
+        type: integer
+      required: true
+      example: 501
+    waba_analytics_handle_id:
+      description: opaque handle returned by POST /waba/accounts/{account_id}/analytics,
+        used to poll for the result
+      in: path
+      name: handle_id
+      schema:
+        type: string
+      required: true
+      example: 3fa07e9dcae4471cbfd0d0e28f6c5a1a
     user_id:
       description: Numeric user ID of the teammate, as returned by GET /workspace/teammates.
       in: path
@@ -879,6 +1775,13 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
+    Conflict:
+      description: Request conflicts with the current state of the target resource
+        (e.g. the target WABA account is not active / not connected, `account_inactive`)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
   schemas:
     ChatDetails:
       type: object
@@ -910,11 +1813,421 @@ components:
             mirrors the in-app **AI Agent** switch — it clears any "auto-disabled by outgoing
             response" lock and re-arms the agent so it will reply to the next inbound
             message. Setting `false` turns the agent off for this chat.
+    WabaChatDetails:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          maxLength: 256
+          description: Chat's name (must be unique in workspace)
+          example: John Doe
+        responsible:
+          type: string
+          description: Assign team member as responsible (specified by registration
+            email in TimelinesAI) or unassign a chat from responsible by supplying
+            an empty string ("").
+          example: john.doe@acme.com
+        closed:
+          type: boolean
+          description: Is the chart closed (true) or open (false)
+          example: false
+        read:
+          type: boolean
+          description: Is the chat read (true) or unread (false)
+          example: true
+    WabaChatInfo:
+      type: object
+      required:
+      - id
+      - name
+      - is_group
+      - closed
+      - read
+      - labels
+      - chatgpt_autoresponse_enabled
+      - chat_url
+      - created_timestamp
+      - unattended
+      - waba_account_id
+      - service_window_is_open
+      - service_window_expires_at
+      properties:
+        id:
+          example: '1000001'
+          type: integer
+        name:
+          example: John Doe
+          type: string
+        phone:
+          example: '+15551230000'
+          type: string
+          description: >
+            Contact's phone number, as stored for the WABA chat. `null` for group chats.
+        is_group:
+          example: false
+          type: boolean
+        closed:
+          example: false
+          type: boolean
+        read:
+          example: true
+          type: boolean
+        labels:
+          example:
+          - label1
+          - label2
+          - label3
+          type: array
+          items:
+            type: string
+        chatgpt_autoresponse_enabled:
+          type: boolean
+          example: true
+          description: Whether the AI Agent (ChatGPT autoresponse) is currently enabled for this chat.
+        responsible_email:
+          example: kate.smitch@acme.com
+          type: string
+          description: >
+            Registration email of the team member responsible for the chat;
+            `null` if the chat is unassigned.
+        responsible_name:
+          example: Kate Smith
+          type: string
+        chat_url:
+          example: https://app.timelines.ai/chat/1000001/messages/
+          type: string
+        created_timestamp:
+          example: 2024-01-08 10:35:18 +0200
+          type: string
+          description: >
+            Chat creation time in the workspace timezone, formatted
+            `YYYY-MM-DD HH:MM:SS ±ZZZZ`.
+        last_message_uid:
+          example: 4f43a9a0-b87e-4667-adfd-689674c3326c
+          type: string
+        last_message_timestamp:
+          example: 2024-01-29 13:55:04 +0200
+          type: string
+        last_message:
+          $ref: '#/components/schemas/MessageSummary'
+        unattended:
+          example: false
+          type: boolean
+          description: >
+            `true` when the AI Agent / autoresponder has flagged the chat as an
+            **unattended customer** — an inbound message went unanswered and tripped
+            the not-attended flow; cleared once the chat is handled. (Same underlying
+            value as the webhook field `unattended_customer`.)
+        group_members:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                example: John Doe
+              phone:
+                type: string
+                example: '+972502222222'
+              role:
+                type: string
+                example: admin
+              chat_id:
+                type: integer
+                example: 123456
+                description: >
+                  TimelinesAI chat ID of this member's one-on-one chat, if such a
+                  chat exists; otherwise `null`.
+        waba_account_id:
+          type: integer
+          nullable: true
+          example: 4021
+          description: Internal id of the WABA account that owns this chat.
+        service_window_is_open:
+          type: boolean
+          nullable: true
+          example: true
+          description: >
+            Whether the 24h customer service window is currently open (based on the
+            contact's last incoming message). `null` when no incoming message has
+            been recorded for this chat yet.
+        service_window_expires_at:
+          type: string
+          nullable: true
+          example: 2024-01-30 13:55:04 +0200
+          description: >
+            When the current service window closes, in the workspace timezone.
+            `null` when the window is closed or unknown.
+    WabaAccountItem:
+      type: object
+      required:
+      - id
+      - status
+      - owner_name
+      - owner_email
+      - connected_on
+      - meta_phone_id
+      - display_phone_number
+      properties:
+        id:
+          type: integer
+          example: 4021
+          description: Internal account id, the only value used to address this account.
+        status:
+          type: string
+          example: active
+          description: >
+            Lifecycle status of the WABA account: `active`, `disabled`, or `disconnected`.
+        owner_name:
+          type: string
+          example: John Doe
+        owner_email:
+          type: string
+          example: john.doe@acme.com
+        connected_on:
+          type: string
+          example: 2026-05-18 15:19:23 +0100
+        meta_phone_id:
+          type: string
+          example: '109876543210987'
+        meta_waba_id:
+          type: string
+          example: '210987654321098'
+        display_phone_number:
+          type: string
+          example: '+1 555 010 1234'
+    WabaProfileInfo:
+      type: object
+      required:
+      - meta_waba_id
+      - name
+      - account_ids
+      properties:
+        meta_waba_id:
+          type: string
+          example: '210987654321098'
+        name:
+          type: string
+          example: Initech Support
+        account_ids:
+          type: array
+          items:
+            type: integer
+          example: [4021, 4022]
+    WabaAccountDetail:
+      type: object
+      required:
+      - id
+      - status
+      - owner_name
+      - owner_email
+      - connected_on
+      - meta_phone_id
+      - display_phone_number
+      properties:
+        id:
+          type: integer
+          example: 4021
+          description: Internal account id, the only value used to address this account.
+        status:
+          type: string
+          example: active
+          description: >
+            Lifecycle status of the WABA account: `active`, `disabled`, or `disconnected`.
+        owner_name:
+          type: string
+          example: John Doe
+        owner_email:
+          type: string
+          example: john.doe@acme.com
+        connected_on:
+          type: string
+          example: 2026-05-18 15:19:23 +0100
+        meta_phone_id:
+          type: string
+          example: '109876543210987'
+        meta_waba_id:
+          type: string
+          example: '210987654321098'
+        display_phone_number:
+          type: string
+          example: '+1 555 010 1234'
+        waba_profile:
+          $ref: '#/components/schemas/WabaProfileInfo'
+        _note:
+          type: string
+          description: >
+            id is the internal account id and is the only value used to address
+            this account. meta_phone_id and meta_waba_id are display-only
+            cross-reference fields.
+    WabaTemplateItem:
+      type: object
+      required:
+      - id
+      - meta_template_id
+      - name
+      - status
+      - language
+      properties:
+        id:
+          type: integer
+          example: 501
+          description: Internal template id, the only value used to address this template.
+        meta_template_id:
+          type: string
+          example: '1363720662277035'
+          description: Meta template id, display-only.
+        name:
+          type: string
+          example: simple_check_vars
+          description: Template name; this is the value used to send a template message.
+        status:
+          type: string
+          example: APPROVED
+          description: Meta's template status, returned verbatim.
+        parameter_format:
+          type: string
+          example: NAMED
+          description: Meta's parameter_format, returned verbatim.
+        language:
+          type: string
+          example: en
+        category:
+          type: string
+          example: MARKETING
+        meta_waba_id:
+          type: string
+          example: '210987654321098'
+    WabaTemplateDetail:
+      type: object
+      required:
+      - id
+      - meta_template_id
+      - name
+      - status
+      - language
+      - accounts
+      - components
+      properties:
+        id:
+          type: integer
+          example: 501
+          description: Internal template id, the only value used to address this template.
+        meta_template_id:
+          type: string
+          example: '1363720662277035'
+          description: Meta template id, display-only.
+        name:
+          type: string
+          example: simple_check_vars
+          description: Template name; this is the value used to send a template message.
+        status:
+          type: string
+          example: APPROVED
+          description: Meta's template status, returned verbatim.
+        parameter_format:
+          type: string
+          example: NAMED
+          description: Meta's parameter_format, returned verbatim.
+        language:
+          type: string
+          example: en
+        category:
+          type: string
+          example: MARKETING
+        meta_waba_id:
+          type: string
+          example: '210987654321098'
+        accounts:
+          type: array
+          items:
+            type: integer
+          example: [4021, 4022]
+          description: Internal WabaAccount ids under the same WABA profile.
+        components:
+          type: array
+          items:
+            type: object
+          description: >
+            Template components exactly as stored from Meta (uppercase `type` /
+            `format`, `example` including `body_text_named_params` etc. for named
+            parameters). Verbatim Meta shape, not normalized.
+    WabaOutboundTemplate:
+      type: object
+      required:
+      - name
+      - language
+      properties:
+        name:
+          type: string
+          example: order_update
+        language:
+          type: string
+          example: en_US
+        variables:
+          type: object
+          description: >
+            Template variable values grouped by section. Supported keys: `header`, `body`.
+          example:
+            header: [Dana]
+            body: [Dana, A-1027]
+    WabaOutboundMessage:
+      type: object
+      description: >
+        Exactly one of `text`, `file_uid`, or `template` must be provided (a file
+        may be sent together with a `text` caption; `template` cannot be combined
+        with `text`, `file_uid`, or a file upload). `waba_account_id` and `phone`
+        are required when sending without a chat id (i.e. via `POST /waba/messages`);
+        they are ignored when sending into an existing chat.
+      properties:
+        text:
+          type: string
+          example: Hello
+          description: Free-text message or caption for file_uid.
+        file_uid:
+          type: string
+          description: Previously uploaded Public API file UID.
+        template:
+          $ref: '#/components/schemas/WabaOutboundTemplate'
+        waba_account_id:
+          type: integer
+          example: 4021
+          description: Required when sending without a chat id.
+        phone:
+          type: string
+          example: '+15551230000'
+          description: Required when sending without a chat id.
+    WabaOutboundMessageForm:
+      type: object
+      required:
+      - file
+      properties:
+        file:
+          type: string
+          format: binary
+          description: A file content in binary format.
+        text:
+          type: string
+          description: Optional caption text to send together with the file.
+        filename:
+          type: string
+          description: Optional filename override. If omitted, the multipart filename is used.
+        waba_account_id:
+          type: integer
+          example: 4021
+          description: Required when sending without a chat id.
+        phone:
+          type: string
+          example: '+15551230000'
+          description: Required when sending without a chat id.
     Label:
       type: string
       maxLength: 64
-      description: assign label to the chat, in which the message is sent (create
-        new label, if not exists)
+      description: >
+        Label name. Each label name can be up to 64 characters. Label-apply
+        endpoints create a workspace label automatically when the supplied name
+        does not already exist.
       example: customer
     Message:
       type: object
@@ -1093,6 +2406,8 @@ components:
         last_message_timestamp:
           example: 2024-01-29 13:55:04 +0200
           type: string
+        last_message:
+          $ref: '#/components/schemas/MessageSummary'
         unattended:
           example: false
           type: boolean
@@ -1235,6 +2550,130 @@ components:
           description: >
             Display name of the team member who created the message; empty string
             for messages not created by a member (e.g. synced or inbound messages).
+        failure_reason:
+          type: object
+          nullable: true
+          description: >
+            Present when `status` is `Failed`. Currently populated only for WABA
+            messages (`GET /waba/messages/{message_uid}`); `null`/absent otherwise.
+          required:
+          - code
+          - title
+          - details
+          properties:
+            code:
+              oneOf:
+              - type: integer
+              - type: string
+                enum:
+                - ''
+            title:
+              type: string
+            details:
+              type: string
+    MessageSummary:
+      type: object
+      description: >
+        Same shape as MessageInfo, with the `reactions` key omitted. Used for the
+        `last_message` field on chat list/detail responses.
+      required:
+      - uid
+      - chat_id
+      - timestamp
+      - received_timestamp
+      - sender_phone
+      - sender_name
+      - recipient_phone
+      - recipient_name
+      - from_me
+      - status
+      - origin
+      - has_attachment
+      - message_type
+      - data
+      - created_by
+      properties:
+        uid:
+          type: string
+          example: de919486-0c93-409d-ae66-c2bbb544faca
+        chat_id:
+          example: '1000001'
+          type: integer
+        timestamp:
+          description: message creation timestamp, WhatsApp message time
+          example: 2023-06-18 15:19:23 +0300
+          type: string
+        received_timestamp:
+          description: message creation timestamp in TimelinesAI, in ISO format with timezone
+          example: 2023-06-18 14:39:25 +0300
+          type: string
+        sender_phone:
+          example: '+972540000001'
+          type: string
+        sender_name:
+          example: John Doe
+          type: string
+        recipient_phone:
+          example: '+972540000002'
+          type: string
+        recipient_name:
+          example: Kate Smith
+          type: string
+        from_me:
+          example: true
+          type: boolean
+        text:
+          example: Hello, Kate👍
+          type: string
+          description: >
+            Message body text. `null` for attachment-only messages and for call /
+            event messages.
+        attachment_url:
+          example: https://acme.com/logo.png
+          type: string
+        attachment_filename:
+          example: logo.png
+          type: string
+        status:
+          example: Read
+          type: string
+          description: >
+            Delivery status, one of: `Sending`, `Sent`, `Delivered`, `Read`,
+            `Failed`, `Pending`. For call messages, a call status (e.g. `answered`,
+            `missed`) is returned instead.
+        origin:
+          example: Public API
+          type: string
+          description: >
+            Human-readable origin of the message, e.g. `Public API`, `Shared Inbox`,
+            `Mass Messaging`, `Chrome Extension`, `synced from WhatsApp`, `Webhook`.
+            Additional values are possible (e.g. from OIDC / connected third-party
+            apps), so treat this as an open-ended, display-only string rather than an
+            exhaustive enum.
+        has_attachment:
+          example: true
+          type: boolean
+        message_type:
+          example: Note
+          type: string
+          description: >
+            Type of message: one of `whatsapp`, `whatsapp_call`, `note`, `email`,
+            `summary`.
+        data:
+          example:
+            key1: value1
+            key2: value2
+          type: object
+          description: >
+            Free-form metadata object whose contents vary by `message_type` (for
+            example, call status, or scheduled-event start/end times). Shape is not
+            stable across message types.
+        created_by:
+          example: Kate Smith
+          type: string
+          description: >
+            Display name of the team member who created the message; empty string
+            for messages not created by a member (e.g. synced or inbound messages).
     MessageStatusHistoryRecord:
       type: object
       required:
@@ -1245,6 +2684,27 @@ components:
           type: string
         timestamp:
           type: string
+        failure_reason:
+          type: object
+          nullable: true
+          description: >
+            Present on records where `status` is `Failed`. Currently populated only
+            for WABA messages.
+          required:
+          - code
+          - title
+          - details
+          properties:
+            code:
+              oneOf:
+              - type: integer
+              - type: string
+                enum:
+                - ''
+            title:
+              type: string
+            details:
+              type: string
     LabelsList:
       type: object
       required:
@@ -1252,6 +2712,10 @@ components:
       properties:
         labels:
           type: array
+          description: >
+            Label names to apply. Each item must be a string up to 64 characters.
+            Missing workspace labels are created automatically by label-apply
+            endpoints.
           example:
           - label1
           - label2
@@ -1347,6 +2811,20 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/WhatsappAccountItemV2'
+    WhatsappAccountsResponseV2:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          $ref: '#/components/schemas/WhatsappAccountsListV2'
 # teammates
     WorkspaceTeammateInvitation:
       type: object
@@ -1744,6 +3222,22 @@ components:
         - call:incoming:ended
         - call:outgoing:ended
         - message:reaction
+        - waba:message:received
+        - waba:message:delivered
+        - waba:message:failed
+        - waba:message:read
+        - waba:chat:incoming
+        - waba:chat:outgoing
+        - waba:chat:assigned
+        - waba:chat:unassigned
+        - waba:chat:closed
+        - waba:chat:reopened
+        - waba:account:active
+        - waba:account:disabled
+        - waba:account:disconnected
+        - waba:template:approved
+        - waba:template:rejected
+        - waba:template:disabled
       description: 'Event topic that will trigger the webhook. For the current
         list of supported values see the [Webhooks events documentation](https://timelinesai.mintlify.dev/docs/webhook-reference/overview#available-events)
         (for example: `message:sent:new`, `message:received:new`).'
@@ -1792,15 +3286,25 @@ components:
             - invalid_token            # 401 — token unknown/expired/revoked
             - member_not_found         # 403 — token resolved but no workspace member
             - permission_denied        # 403 — token resolved but caller lacks permission for the resource
+            - insufficient_scope       # 403 — token is missing the OAuth scope required for this operation
             - plan_feature_unavailable # 403 — workspace plan does not include the feature
             - quota_exceeded           # 403/429 — quota for the period is used up
             - rate_limit_exceeded      # 429 — short-term burst limit hit
             - validation_error         # 400 — request body / params failed schema validation
+            - not_found                # 404 — requested resource or referenced entity was not found
+            - account_inactive         # 409 — target WABA account is not active / not connected
+            - template_not_approved    # 409 — WABA template exists but is not in an approved/usable state
+            - template_wrong_waba      # 409 — WABA template belongs to a different WABA than the target account
+            - template_variables_mismatch # 422 — WABA template variables missing or don't match the template's expected shape
+            - service_window_closed    # 409 — WABA free-text/file send attempted outside the open 24h customer service window
             - not_supported            # 405 — feature unavailable for this WhatsApp account (e.g. WABA-only operation on a QR account)
             - internal_error           # 500 — unexpected server-side error
         errors:
           type: array
-          description: Per-field validation diagnostics. Present on `validation_error` responses; absent on auth/authorization/quota errors.
+          description: Per-field validation diagnostics for request-schema (body/params)
+            validation failures. Present only when the request failed schema validation;
+            absent on business-rule `validation_error` rejections (which carry `message`
+            and `error_code` only) and on auth/authorization/quota errors.
           items:
             $ref: '#/components/schemas/ValidationError'
     ValidationError:
@@ -1852,6 +3356,41 @@ components:
           - error
         data:
           $ref: '#/components/schemas/ChatInfo'
+    WabaChatListResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          type: object
+          properties:
+            has_more_pages:
+              type: boolean
+            chats:
+              type: array
+              items:
+                $ref: '#/components/schemas/WabaChatInfo'
+    WabaChatInfoResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          $ref: '#/components/schemas/WabaChatInfo'
     MessageListResponse:
       type: object
       required:
@@ -1970,9 +3509,9 @@ components:
           example: 👍
         current:
           type: boolean
-          description: True if the reaction was placed by the chat's contact (the remote end of a 1:1 conversation). 
-            False if placed by the workspace's own WhatsApp account, 
-            or in any group chat (groups have no single "remote contact" identity).
+          description: True if the reaction was placed by the workspace's own WhatsApp account
+            (the "current" side of the conversation). False if placed by anyone else -
+            the remote contact in a 1:1 conversation, or another participant in a group chat.
           example: true
     MessageSendResponse:
       type: object
@@ -2171,6 +3710,407 @@ components:
         data:
           $ref: '#/components/schemas/WebhookInfo'
       description: Standard envelope returning a single webhook in the **data** field.
+    TemplateVisibility:
+      type: string
+      enum:
+      - public
+      - private
+      - read-only
+    TemplateCreate:
+      type: object
+      required:
+      - name
+      - text
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 160
+          example: Greeting
+        text:
+          type: string
+          minLength: 1
+          maxLength: 4096
+          example: Hello
+        visibility:
+          allOf:
+          - $ref: '#/components/schemas/TemplateVisibility'
+          default: public
+        team_title:
+          type: string
+          nullable: true
+          description: Title of the team to share the template with. Omit for "all
+            teams". Without `MANAGE_ALL_TEMPLATES`, the template is forced into the
+            caller's own team regardless of this value. Valid values match the team
+            titles returned by `GET /workspace/teammates`.
+          example: Sales
+      description: A new text template.
+    TemplateUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 160
+          example: Greeting
+        text:
+          type: string
+          minLength: 1
+          maxLength: 4096
+          example: Hello
+        visibility:
+          $ref: '#/components/schemas/TemplateVisibility'
+        team_title:
+          type: string
+          nullable: true
+          description: Title of the team to share the template with. Pass `null`
+            to reset to "all teams". Requires `MANAGE_ALL_TEMPLATES` to set a team
+            other than the caller's own.
+          example: Sales
+      description: Partial representation used to update an existing template. Any
+        omitted field keeps its current value.
+    TemplateInfo:
+      type: object
+      required:
+      - id
+      - name
+      - text
+      - visibility
+      - created_by_name
+      - created_at
+      - updated_by_name
+      - updated_at
+      properties:
+        id:
+          type: integer
+          example: 501
+        name:
+          type: string
+          example: Greeting
+        text:
+          type: string
+          example: Hello
+        visibility:
+          $ref: '#/components/schemas/TemplateVisibility'
+        team_title:
+          type: string
+          nullable: true
+          description: '"Default" for the workspace''s default team, `null` when
+            shared with all teams, otherwise the team''s title.'
+          example: Sales
+        created_by_name:
+          type: string
+          example: John
+        created_at:
+          type: string
+          example: '2026-07-17T09:00:00Z'
+        updated_by_name:
+          type: string
+          example: Alex
+        updated_at:
+          type: string
+          example: '2026-07-17T09:00:00Z'
+      description: Server generated representation of a text template.
+    TemplateInfoList:
+      type: array
+      items:
+        $ref: '#/components/schemas/TemplateInfo'
+    TemplateListInfo:
+      type: object
+      required:
+      - templates_count
+      - templates
+      properties:
+        templates_count:
+          type: integer
+          example: 1
+        templates:
+          $ref: '#/components/schemas/TemplateInfoList'
+    TemplateListResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          $ref: '#/components/schemas/TemplateListInfo'
+      description: Standard envelope returning templates in the **data.templates**
+        field.
+    TemplateInfoResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          $ref: '#/components/schemas/TemplateInfo'
+      description: Standard envelope returning a single template in the **data** field.
+    TemplateAttachmentInfo:
+      type: object
+      properties:
+        filename:
+          type: string
+          example: brochure.pdf
+        size:
+          type: integer
+          example: 10240
+    TemplateInfoV2:
+      type: object
+      description: Legacy (v2) template representation, richer than TemplateInfo.
+      required:
+      - id
+      - name
+      - text
+      - created_by_name
+      - updated_by_name
+      - updated_at
+      - can_be_edited
+      - can_be_deleted
+      - visibility
+      - team_any
+      - sample_data
+      - variable_source
+      properties:
+        id:
+          type: integer
+          example: 501
+        name:
+          type: string
+          example: Greeting
+        text:
+          type: string
+          example: Hello
+        created_by_name:
+          type: string
+          example: John
+        updated_by_name:
+          type: string
+          example: Alex
+        updated_at:
+          type: string
+          example: '2026-07-17 09:00'
+          description: Formatted to minute precision, in the workspace timezone.
+        can_be_edited:
+          type: boolean
+          example: true
+        can_be_deleted:
+          type: boolean
+          example: true
+        visibility:
+          $ref: '#/components/schemas/TemplateVisibility'
+        team_any:
+          type: boolean
+          example: false
+          description: When true, the template is shared with all teams and `team` is null.
+        team:
+          type: integer
+          nullable: true
+          example: 12
+          description: Internal id of the team this template is scoped to; null when team_any is true.
+        sample_data:
+          type: object
+          description: Legacy free-form sample variable values for the template.
+        variable_source:
+          type: integer
+          description: Legacy numeric code identifying where template variables are sourced from.
+        attachment:
+          $ref: '#/components/schemas/TemplateAttachmentInfo'
+    TemplateListResponseV2:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          type: object
+          properties:
+            templates_count:
+              type: integer
+              example: 1
+            templates:
+              type: array
+              items:
+                $ref: '#/components/schemas/TemplateInfoV2'
+    TemplateTrackUsageV2Request:
+      type: object
+      required:
+      - template_id
+      - origin
+      properties:
+        template_id:
+          type: integer
+          example: 501
+        origin:
+          type: string
+          example: Chat View
+    SimpleSuccessResponse:
+      type: object
+      required:
+      - success
+      properties:
+        success:
+          type: boolean
+          example: true
+    WabaAccountsList:
+      type: object
+      required:
+      - waba_accounts
+      properties:
+        waba_accounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/WabaAccountItem'
+    WabaAccountsResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          $ref: '#/components/schemas/WabaAccountsList'
+    WabaAccountDetailResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          $ref: '#/components/schemas/WabaAccountDetail'
+    WabaTemplateListResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          type: object
+          properties:
+            has_more_pages:
+              type: boolean
+            templates:
+              type: array
+              items:
+                $ref: '#/components/schemas/WabaTemplateItem'
+    WabaTemplateDetailResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          $ref: '#/components/schemas/WabaTemplateDetail'
+    WabaAnalyticsRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - start
+      - end
+      properties:
+        start:
+          type: integer
+          description: Window start as a UNIX timestamp (seconds). A start older than 365 days is silently clamped to the last 365 days.
+          example: 1751328000
+        end:
+          type: integer
+          description: Window end as a UNIX timestamp (seconds). An end in the future is clamped to now.
+          example: 1753920000
+        dimensions:
+          type: string
+          description: >
+            Optional comma-separated pricing breakdown dimensions. Allowed
+            values: `COUNTRY`, `PRICING_CATEGORY`, `PRICING_TYPE` (e.g.
+            `"COUNTRY,PRICING_CATEGORY"`, surrounding whitespace tolerated).
+            Applies to the `pricing_analytics` breakdown only; the messaging
+            `analytics` block is unaffected. Omitted or empty yields flat
+            pricing points with no breakdown keys.
+          example: COUNTRY,PRICING_CATEGORY
+    WabaAnalyticsStatus:
+      type: object
+      required:
+      - handle
+      - state
+      properties:
+        handle:
+          type: string
+          example: 3fa07e9dcae4471cbfd0d0e28f6c5a1a
+          description: Opaque handle identifying this analytics request; use it to poll for the result.
+        state:
+          type: string
+          enum:
+          - pending
+          - ready
+          - error
+        result:
+          type: object
+          description: >
+            Present when `state` is `ready`. Carries two Meta edges: `analytics`
+            (messaging volume, with `sent`/`delivered` per day) and
+            `pricing_analytics` (message volume, with the requested breakdown
+            keys per day). Cost and conversation analytics are not included.
+        error:
+          type: object
+          description: Present when `state` is `error`.
+          properties:
+            code:
+              type: integer
+            message:
+              type: string
+    WabaAnalyticsResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          $ref: '#/components/schemas/WabaAnalyticsStatus'
   securitySchemes:
     bearerAuth:
       type: http

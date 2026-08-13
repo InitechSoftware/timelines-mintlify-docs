@@ -261,6 +261,246 @@ webhooks:
         '200':
           description: 'Receiver accepted the event'
 
+  waba:message:received:
+    post:
+      summary: Triggered when a new WABA message is received from a contact.
+      tags:
+        - waba_messages
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WabaMessageData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  waba:message:delivered:
+    post:
+      summary: Triggered when an outbound WABA message is delivered.
+      tags:
+        - waba_messages
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WabaMessageData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  waba:message:failed:
+    post:
+      summary: Triggered when an outbound WABA message fails to send.
+      tags:
+        - waba_messages
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WabaMessageData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  waba:message:read:
+    post:
+      summary: Triggered when an outbound WABA message is read.
+      tags:
+        - waba_messages
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WabaMessageData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  waba:account:active:
+    post:
+      summary: Triggered when a WABA account becomes active.
+      tags:
+        - waba_accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WabaAccountData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  waba:account:disabled:
+    post:
+      summary: Triggered when a WABA account is disabled.
+      tags:
+        - waba_accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WabaAccountData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  waba:account:disconnected:
+    post:
+      summary: Triggered when a WABA account is disconnected (removed).
+      tags:
+        - waba_accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WabaAccountData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  waba:template:approved:
+    post:
+      summary: Triggered when a WABA template is approved by Meta.
+      tags:
+        - waba_templates
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WabaTemplateData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  waba:template:rejected:
+    post:
+      summary: Triggered when a WABA template is rejected by Meta.
+      tags:
+        - waba_templates
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WabaTemplateData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  waba:template:disabled:
+    post:
+      summary: Triggered when a WABA template is disabled / pending deletion.
+      tags:
+        - waba_templates
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WabaTemplateData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  waba:chat:incoming:
+    post:
+      summary: Triggered when there is a new incoming WABA chat.
+      tags:
+        - waba_chats
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WabaChatData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  waba:chat:outgoing:
+    post:
+      summary: Triggered when there is a new outgoing WABA chat.
+      tags:
+        - waba_chats
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WabaChatData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  waba:chat:assigned:
+    post:
+      summary: Triggered when a WABA chat is (re)assigned to a workspace member.
+      tags:
+        - waba_chats
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WabaChatData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  waba:chat:unassigned:
+    post:
+      summary: Triggered when a WABA chat is unassigned.
+      tags:
+        - waba_chats
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WabaChatData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  waba:chat:closed:
+    post:
+      summary: Triggered when a WABA chat is closed.
+      tags:
+        - waba_chats
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WabaChatData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  waba:chat:reopened:
+    post:
+      summary: Triggered when a WABA chat is reopened.
+      tags:
+        - waba_chats
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WabaChatData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
 components:
   schemas:
 # Main data objects
@@ -370,6 +610,92 @@ components:
           $ref: '#/components/schemas/ReactionDataWhatsappAccountInfo'
         reaction:
           $ref: '#/components/schemas/ReactionInfo'
+
+    WabaMessageData:
+      type: object
+      required:
+        - event_type
+        - account
+        - chat
+        - message
+      properties:
+        event_type:
+          type: string
+          description: Webhook event name
+          example: waba:message:received
+          enum:
+            - waba:message:received
+            - waba:message:delivered
+            - waba:message:failed
+            - waba:message:read
+        account:
+          $ref: '#/components/schemas/WabaMessageAccountInfo'
+        chat:
+          $ref: '#/components/schemas/WabaMessageChatInfo'
+        message:
+          $ref: '#/components/schemas/WabaMessageInfo'
+
+    WabaChatData:
+      type: object
+      required:
+        - event_type
+        - chat
+        - account
+      properties:
+        event_type:
+          type: string
+          description: Webhook event name
+          example: waba:chat:incoming
+          enum:
+            - waba:chat:incoming
+            - waba:chat:outgoing
+            - waba:chat:assigned
+            - waba:chat:unassigned
+            - waba:chat:closed
+            - waba:chat:reopened
+        chat:
+          $ref: '#/components/schemas/WabaChatInfo'
+        account:
+          $ref: '#/components/schemas/WabaBasicAccountInfo'
+        responsible:
+          $ref: '#/components/schemas/WabaResponsibleInfo'
+          description: >
+            Present (non-null) only for waba:chat:assigned; null/absent for the
+            other WABA chat events.
+
+    WabaAccountData:
+      type: object
+      required:
+        - event_type
+        - account
+      properties:
+        event_type:
+          type: string
+          description: Webhook event name
+          example: waba:account:active
+          enum:
+            - waba:account:active
+            - waba:account:disabled
+            - waba:account:disconnected
+        account:
+          $ref: '#/components/schemas/WabaAccountInfo'
+
+    WabaTemplateData:
+      type: object
+      required:
+        - event_type
+        - template
+      properties:
+        event_type:
+          type: string
+          description: Webhook event name
+          example: waba:template:approved
+          enum:
+            - waba:template:approved
+            - waba:template:rejected
+            - waba:template:disabled
+        template:
+          $ref: '#/components/schemas/WabaTemplateInfo'
 
 # Subobjects
     AccountDataWhatsappAccountInfo:
@@ -874,3 +1200,239 @@ components:
           example:
             👍: 2
             ❤️: 1
+
+# WABA subobjects
+    WabaMessageAccountInfo:
+      type: object
+      required:
+        - id
+        - meta_phone_id
+        - meta_waba_id
+        - account_name
+      properties:
+        id:
+          type: integer
+          description: Internal WABA account id
+          example: 4821
+        meta_phone_id:
+          type: string
+          example: "109998887776665"
+        meta_waba_id:
+          type: string
+          example: "203344556677889"
+        phone:
+          type: string
+          example: "+15559876543"
+        account_name:
+          type: string
+          example: Sales Bot
+
+    WabaBasicAccountInfo:
+      type: object
+      required:
+        - id
+        - meta_phone_id
+        - meta_waba_id
+      properties:
+        id:
+          type: integer
+          example: 4821
+        meta_phone_id:
+          type: string
+          example: "109876543210987"
+        meta_waba_id:
+          type: string
+          example: "102233445566778"
+
+    WabaAccountInfo:
+      type: object
+      required:
+        - id
+        - meta_phone_id
+        - meta_waba_id
+        - state
+      properties:
+        id:
+          type: integer
+          example: 4821
+        meta_phone_id:
+          type: string
+          example: "109998887776665"
+        meta_waba_id:
+          type: string
+          example: "203344556677889"
+        display_phone_number:
+          type: string
+          example: "+1 555 010 1234"
+        state:
+          type: string
+          description: >
+            Raw WABA account lifecycle state. Note this differs from the
+            waba:account:disconnected event name: the underlying state value for a
+            disconnected account is `removed`, not `disconnected`.
+          example: active
+          enum:
+            - active
+            - disabled
+            - removed
+
+    WabaMessageChatInfo:
+      type: object
+      required:
+        - id
+        - waba_account_id
+        - closed
+      properties:
+        id:
+          type: integer
+          description: TimelinesAI chat id
+          example: 90155
+        waba_account_id:
+          type: integer
+          example: 4821
+        closed:
+          type: boolean
+          example: false
+        service_window_is_open:
+          type: boolean
+          description: >
+            Whether the 24h customer service window is currently open. Null when
+            no incoming message has been recorded for this chat yet.
+          example: true
+        service_window_expires_at:
+          type: string
+          description: When the current service window closes, in the workspace timezone.
+          example: 2024-01-08 10:35:18 +0200
+
+    WabaChatInfo:
+      type: object
+      required:
+        - id
+        - waba_account_id
+      properties:
+        id:
+          type: integer
+          description: TimelinesAI chat id
+          example: 90155
+        waba_account_id:
+          type: integer
+          example: 4821
+
+    WabaResponsibleInfo:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Agent Brown
+        email:
+          type: string
+          example: agent-brown@example.com
+
+    WabaMessageTemplateInfo:
+      type: object
+      description: Present only when the message was sent from a template.
+      required:
+        - name
+      properties:
+        id:
+          type: integer
+          description: Internal template id, when the template could be resolved locally.
+          example: 501
+        name:
+          type: string
+          example: order_confirmation
+
+    WabaMessageFailureReason:
+      type: object
+      required:
+        - code
+        - title
+        - details
+      properties:
+        code:
+          oneOf:
+            - type: integer
+            - type: string
+              enum:
+                - ''
+          example: 131047
+        title:
+          type: string
+          example: "Re-engagement message"
+        details:
+          type: string
+          example: "Message failed to send outside the 24 hour window."
+
+    WabaMessageInfo:
+      type: object
+      required:
+        - message_uid
+        - direction
+        - status
+        - timestamp
+      properties:
+        message_uid:
+          type: string
+          example: c7ec509d-0171-1ead-a84b-c6943a644768
+        direction:
+          type: string
+          description: sent or received
+          example: sent
+        status:
+          type: string
+          example: Delivered
+        timestamp:
+          type: string
+          example: "2026-06-24 10:15:30 +0000"
+        received_timestamp:
+          type: string
+          example: "2026-06-24 10:15:31 +0000"
+        text:
+          type: string
+          example: Hi, is this still available?
+        origin:
+          type: string
+          example: WhatsApp
+        sender:
+          $ref: '#/components/schemas/PartyInfo'
+        recipient:
+          $ref: '#/components/schemas/PartyInfo'
+        attachments:
+          $ref: '#/components/schemas/AttachmentList'
+        template:
+          $ref: '#/components/schemas/WabaMessageTemplateInfo'
+        failure_reason:
+          description: Required for `waba:message:failed`; omitted for `waba:message:received`, `waba:message:delivered`, and `waba:message:read`.
+          $ref: '#/components/schemas/WabaMessageFailureReason'
+
+    WabaTemplateInfo:
+      type: object
+      required:
+        - id
+        - name
+        - status
+        - meta_waba_id
+        - accounts
+      properties:
+        id:
+          type: integer
+          example: 501
+        name:
+          type: string
+          example: order_confirmation_v2
+        status:
+          type: string
+          description: Meta's template status, returned verbatim.
+          example: APPROVED
+        parameter_format:
+          type: string
+          example: NAMED
+        meta_waba_id:
+          type: string
+          example: "102233445566778"
+        accounts:
+          type: array
+          description: Internal WabaAccount ids under the same WABA profile.
+          items:
+            type: integer
+          example: [4821, 4822]
