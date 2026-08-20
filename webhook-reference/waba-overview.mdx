@@ -1,0 +1,106 @@
+---
+title: "WABA API Webhooks Overview"
+description: "Receive real-time notifications for WhatsApp Business Platform (WABA) events in your workspace"
+mode: "wide"
+---
+
+# WABA API Webhooks
+
+WABA API Webhooks deliver real-time notifications when WhatsApp Business Platform events occur in your TimelinesAI workspace. They use the same subscription mechanism, delivery model, and retry policy as the regular [PublicAPI Webhooks](/webhook-reference/overview) — the difference is the set of WABA-specific event types and payload shapes described below.
+
+## How it works
+
+<Steps>
+  <Step title="Register a webhook">
+    Use `POST /webhooks` to subscribe to a WABA event type and provide your endpoint URL
+  </Step>
+  <Step title="An event occurs">
+    A WABA message arrives, a WABA chat changes state, a template is reviewed by Meta, or an account status changes
+  </Step>
+  <Step title="You receive a POST request">
+    TimelinesAI sends the event payload to your endpoint in real-time
+  </Step>
+  <Step title="Acknowledge receipt">
+    Your server responds with a 2xx status within 5 seconds
+  </Step>
+</Steps>
+
+## Available events
+
+### WABA message events
+
+| Event | Trigger | Description |
+|-------|---------|-------------|
+| `waba:message:received` | Incoming WABA message | A contact sends a message on a WABA account |
+| `waba:message:delivered` | Outbound message delivered | An outbound WABA message is delivered to the contact |
+| `waba:message:failed` | Outbound message failed | An outbound WABA message fails to send (includes structured `failure_reason`) |
+| `waba:message:read` | Outbound message read | An outbound WABA message is read by the contact |
+
+### WABA chat events
+
+| Event | Trigger | Description |
+|-------|---------|-------------|
+| `waba:chat:incoming` | New incoming WABA chat | A contact initiates a WABA conversation |
+| `waba:chat:outgoing` | New outgoing WABA chat | You start a new WABA conversation |
+| `waba:chat:assigned` | WABA chat (re)assigned | A WABA chat is assigned to a workspace member (payload carries the responsible member) |
+| `waba:chat:unassigned` | WABA chat unassigned | A WABA chat's assignment is removed |
+| `waba:chat:closed` | WABA chat closed | A WABA chat is closed |
+| `waba:chat:reopened` | WABA chat reopened | A WABA chat is reopened |
+
+### WABA account events
+
+| Event | Trigger | Description |
+|-------|---------|-------------|
+| `waba:account:active` | Account active | A WABA account becomes active |
+| `waba:account:disabled` | Account disabled | A WABA account is disabled |
+| `waba:account:disconnected` | Account disconnected | A WABA account is disconnected (removed) |
+
+### WABA template events
+
+| Event | Trigger | Description |
+|-------|---------|-------------|
+| `waba:template:approved` | Template approved | A WABA message template is approved by Meta |
+| `waba:template:rejected` | Template rejected | A WABA message template is rejected by Meta |
+| `waba:template:disabled` | Template disabled | A WABA message template is disabled or pending deletion |
+
+<Info>
+**Failed messages** — `waba:message:failed` carries a structured `failure_reason` object with `code`, `title`, and `details`. It is present only on the failed event and omitted for `received`, `delivered`, and `read`.
+</Info>
+
+<Info>
+**Payload shapes** — WABA message webhook events bundle the account, chat, and message objects together in a single payload. Each event group has its own schema — see the individual event pages for the exact fields.
+</Info>
+
+## Endpoint requirements
+
+Your webhook endpoint must:
+
+<Check>Be publicly accessible (no localhost in production)</Check>
+<Check>Use HTTPS</Check>
+<Check>Respond with a 2xx status within 5 seconds</Check>
+<Check>Accept POST requests with JSON body</Check>
+
+## Managing webhooks
+
+WABA webhook subscriptions are managed via the same Public API endpoints as regular webhooks:
+
+| Action | Endpoint |
+|--------|----------|
+| List all | `GET /webhooks` |
+| Create | `POST /webhooks` |
+| Get details | `GET /webhooks/{id}` |
+| Update | `PUT /webhooks/{id}` |
+| Delete | `DELETE /webhooks/{id}` |
+
+See the [Webhooks guide](/guides/webhooks) for setup instructions and code examples.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="WABA API" icon="code" href="/public-api-reference/waba/overview">
+    Explore all WABA API endpoints
+  </Card>
+  <Card title="PublicAPI Webhooks" icon="webhook" href="/webhook-reference/overview">
+    Regular WhatsApp webhook events
+  </Card>
+</CardGroup>

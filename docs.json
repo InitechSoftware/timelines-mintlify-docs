@@ -208,6 +208,53 @@
         ]
       },
       {
+        "tab": "WABA API Webhooks",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "webhook-reference/waba-overview"
+            ]
+          },
+          {
+            "group": "waba_messages",
+            "pages": [
+              "webhook-reference/waba_messages/triggered-when-a-new-waba-message-is-received",
+              "webhook-reference/waba_messages/triggered-when-an-outbound-waba-message-is-delivered",
+              "webhook-reference/waba_messages/triggered-when-an-outbound-waba-message-is-read",
+              "webhook-reference/waba_messages/triggered-when-an-outbound-waba-message-fails-to-send"
+            ]
+          },
+          {
+            "group": "waba_chats",
+            "pages": [
+              "webhook-reference/waba_chats/triggered-when-there-is-a-new-incoming-waba-chat",
+              "webhook-reference/waba_chats/triggered-when-there-is-a-new-outgoing-waba-chat",
+              "webhook-reference/waba_chats/triggered-when-a-waba-chat-is-reassigned-to-a-workspace-member",
+              "webhook-reference/waba_chats/triggered-when-a-waba-chat-is-unassigned",
+              "webhook-reference/waba_chats/triggered-when-a-waba-chat-is-closed",
+              "webhook-reference/waba_chats/triggered-when-a-waba-chat-is-reopened"
+            ]
+          },
+          {
+            "group": "waba_accounts",
+            "pages": [
+              "webhook-reference/waba_accounts/triggered-when-a-waba-account-becomes-active",
+              "webhook-reference/waba_accounts/triggered-when-a-waba-account-is-disabled",
+              "webhook-reference/waba_accounts/triggered-when-a-waba-account-is-disconnected"
+            ]
+          },
+          {
+            "group": "waba_templates",
+            "pages": [
+              "webhook-reference/waba_templates/triggered-when-a-waba-template-is-approved",
+              "webhook-reference/waba_templates/triggered-when-a-waba-template-is-rejected",
+              "webhook-reference/waba_templates/triggered-when-a-waba-template-is-disabled"
+            ]
+          }
+        ]
+      },
+      {
         "tab": "Public API Webhooks",
         "groups": [
           {
