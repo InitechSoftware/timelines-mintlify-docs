@@ -4,9 +4,26 @@ This repository holds the [Mintlify](https://mintlify.com) documentation site pu
 **[timelines.ai/docs](https://timelines.ai/docs/)**.
 
 It contains the MDX pages, navigation (`docs.json`), and **copies of the OpenAPI specs** that Mintlify
-renders into the interactive API reference. The specs are authored in a separate upstream repo and pulled
-in here by the sync workflow (below). This README documents how **this** repo works; it does not cover the
-upstream authoring process.
+renders into the interactive API reference. The specs are authored upstream and pulled in here by the sync
+workflow (below).
+
+## Where the content is authored
+
+Spec content is written in the private `InitechSoftware/timelines` repo, on a branch, then merged. Do not
+commit spec changes straight to `timelines` `master`. This repo only stores copies.
+
+| Surface | Source spec in `timelines` |
+|---|---|
+| Public API | `public_api/public_api_spec.yaml` |
+| Public webhooks | `webhook/webhook_spec.yaml` |
+| Partner API | `partner_api/partner_api_spec.yaml` |
+| Partner webhooks | `partner_api/partner_api_webhook_spec.yaml` |
+
+Keep the source `servers` URL **relative**. The sync in this repo rewrites it to absolute. A second copy
+under `timelines/static/` feeds the in-app Swagger UI and must stay consistent with the source spec.
+
+After the spec change is merged, run `sync-openapi` (below). The sync copies YAML only. A new operation
+also needs an MDX page and a `docs.json` entry, or it will not appear in the nav.
 
 ## Repository layout
 
