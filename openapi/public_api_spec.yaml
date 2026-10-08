@@ -393,14 +393,22 @@ paths:
   /waba/chats:
     get:
       summary: Get full or filtered list of all WABA chats in the Workspace.
-      description: Leave filtering parameters empty to get the unfiltered list.
+      description: >
+        Leave filtering parameters empty to get all WABA chats visible to the
+        current credential. Workspace API keys can reach all workspace WABA
+        chats. Member-scoped tokens only return chats on WABA numbers visible
+        to that member, plus WABA chats where that member is responsible.
       parameters:
       - in: query
         name: waba_account_id
         schema:
           type: string
-        description: filters WABA chats belonging to one of the specified WABA accounts
-          (comma-separated internal account ids)
+        description: >
+          filters WABA chats belonging to one of the specified WABA accounts
+          (comma-separated internal account ids). For member-scoped tokens, the
+          result is intersected with the member-visible chat set; an invisible
+          account id contributes no chats except chats where the member is
+          responsible.
         example: 4021,4022
       - in: query
         name: responsible
@@ -450,7 +458,9 @@ paths:
         Returns a single WABA chat by its internal `id`. WABA chats are subject
         to Meta's 24-hour customer service window, whose current state is
         exposed on the chat and governs whether free-text (non-template) sends
-        are currently allowed.
+        are currently allowed. Member-scoped tokens can access only chats on
+        WABA numbers visible to that member or chats where that member is
+        responsible; an existing but inaccessible chat returns `permission_denied`.
       parameters:
       - $ref: '#/components/parameters/chat_id'
       responses:
@@ -463,7 +473,11 @@ paths:
         <<: *http_errors_common
     patch:
       summary: Update WABA chat
-      description: Update WABA chat's name, assign responsible (by email), close / re-open, or mark read / unread.
+      description: >
+        Update WABA chat's name, assign responsible (by email), close / re-open,
+        or mark read / unread. Member-scoped tokens can update only chats on
+        WABA numbers visible to that member or chats where that member is
+        responsible; an existing but inaccessible chat returns `permission_denied`.
       parameters:
       - $ref: '#/components/parameters/chat_id'
       requestBody:
@@ -645,10 +659,14 @@ paths:
     get:
       summary: Get the list of all WABA accounts in the Workspace.
       description: >
-        Returns every WhatsApp Business (WABA) account connected to the
-        workspace. WABA accounts are workspace-global assets — visible to any
-        active member regardless of role — and each account's `id` is the
-        handle used to address it across the other WABA endpoints.
+        Returns the WhatsApp Business (WABA) accounts connected to the
+        workspace — each account's `id` is the handle used to address it
+        across the other WABA endpoints. When the request is made on behalf
+        of a specific workspace member (e.g. an OAuth token tied to a
+        teammate), the list is scoped to the accounts that member can see
+        (own accounts, team accounts, or the full list if their role grants
+        broader WABA access); a workspace-level API key with no associated
+        member gets the full workspace list.
       responses:
         '200':
           description: Success
@@ -824,8 +842,13 @@ paths:
   /waba/templates:
     get:
       summary: Get the list of all WABA templates in the Workspace.
-      description: Not filtered. The result is paginated, page size is 50 records,
-        ordered by creation time (descending).
+      description: >
+        Not filtered by template status. When the request is made on behalf
+        of a specific workspace member (e.g. an OAuth token tied to a
+        teammate), the list is scoped to templates under WABA numbers that
+        member can see; a workspace-level API key with no associated member
+        gets the full workspace list. The result is paginated, page size is
+        50 records, ordered by creation time (descending).
       parameters:
       - in: query
         name: page
@@ -2167,6 +2190,14 @@ components:
           example: en_US
         variables:
           type: object
+          additionalProperties:
+            anyOf:
+            - type: array
+              items: {}
+            - type: string
+              nullable: true
+              enum:
+              - null
           description: >
             Template variable values grouped by section. Supported keys: `header`, `body`.
           example:
@@ -2551,26 +2582,11 @@ components:
             Display name of the team member who created the message; empty string
             for messages not created by a member (e.g. synced or inbound messages).
         failure_reason:
-          type: object
-          nullable: true
           description: >
             Present when `status` is `Failed`. Currently populated only for WABA
             messages (`GET /waba/messages/{message_uid}`); `null`/absent otherwise.
-          required:
-          - code
-          - title
-          - details
-          properties:
-            code:
-              oneOf:
-              - type: integer
-              - type: string
-                enum:
-                - ''
-            title:
-              type: string
-            details:
-              type: string
+          allOf:
+          - $ref: '#/components/schemas/MessageFailureReason'
     MessageSummary:
       type: object
       description: >
@@ -2685,26 +2701,27 @@ components:
         timestamp:
           type: string
         failure_reason:
-          type: object
-          nullable: true
           description: >
             Present on records where `status` is `Failed`. Currently populated only
             for WABA messages.
-          required:
-          - code
-          - title
-          - details
-          properties:
-            code:
-              oneOf:
-              - type: integer
-              - type: string
-                enum:
-                - ''
-            title:
-              type: string
-            details:
-              type: string
+          allOf:
+          - $ref: '#/components/schemas/MessageFailureReason'
+    MessageFailureReason:
+      type: object
+      nullable: true
+      required:
+      - code
+      - title
+      - details
+      properties:
+        code:
+          oneOf:
+          - type: integer
+          - type: string
+        title:
+          type: string
+        details:
+          type: string
     LabelsList:
       type: object
       required:
@@ -3238,6 +3255,39 @@ components:
         - waba:template:approved
         - waba:template:rejected
         - waba:template:disabled
+      x-enum-varnames:
+        - message_new
+        - message_sent_new
+        - message_received_new
+        - whatsapp_account_connected
+        - whatsapp_account_disconnected
+        - whatsapp_account_suspended
+        - whatsapp_account_resumed
+        - chat_new
+        - chat_incoming_new
+        - chat_outgoing_new
+        - chat_responsible_assigned
+        - chat_responsible_unassigned
+        - call_incoming_missed
+        - call_incoming_ended
+        - call_outgoing_ended
+        - message_reaction
+        - waba_message_received
+        - waba_message_delivered
+        - waba_message_failed
+        - waba_message_read
+        - waba_chat_incoming
+        - waba_chat_outgoing
+        - waba_chat_assigned
+        - waba_chat_unassigned
+        - waba_chat_closed
+        - waba_chat_reopened
+        - waba_account_activated
+        - waba_account_disabled
+        - waba_account_disconnected
+        - waba_template_approved
+        - waba_template_rejected
+        - waba_template_disabled
       description: 'Event topic that will trigger the webhook. For the current
         list of supported values see the [Webhooks events documentation](https://timelinesai.mintlify.dev/docs/webhook-reference/overview#available-events)
         (for example: `message:sent:new`, `message:received:new`).'
@@ -3769,7 +3819,7 @@ components:
           example: Sales
       description: Partial representation used to update an existing template. Any
         omitted field keeps its current value.
-    TemplateInfo:
+    TemplateItem:
       type: object
       required:
       - id
@@ -3814,7 +3864,7 @@ components:
     TemplateInfoList:
       type: array
       items:
-        $ref: '#/components/schemas/TemplateInfo'
+        $ref: '#/components/schemas/TemplateItem'
     TemplateListInfo:
       type: object
       required:
@@ -3855,7 +3905,7 @@ components:
           - ok
           - error
         data:
-          $ref: '#/components/schemas/TemplateInfo'
+          $ref: '#/components/schemas/TemplateItem'
       description: Standard envelope returning a single template in the **data** field.
     TemplateAttachmentInfo:
       type: object

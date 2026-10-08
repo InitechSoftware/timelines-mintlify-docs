@@ -620,14 +620,7 @@ components:
         - message
       properties:
         event_type:
-          type: string
-          description: Webhook event name
-          example: waba:message:received
-          enum:
-            - waba:message:received
-            - waba:message:delivered
-            - waba:message:failed
-            - waba:message:read
+          $ref: '#/components/schemas/WabaMessageEventType'
         account:
           $ref: '#/components/schemas/WabaMessageAccountInfo'
         chat:
@@ -643,16 +636,7 @@ components:
         - account
       properties:
         event_type:
-          type: string
-          description: Webhook event name
-          example: waba:chat:incoming
-          enum:
-            - waba:chat:incoming
-            - waba:chat:outgoing
-            - waba:chat:assigned
-            - waba:chat:unassigned
-            - waba:chat:closed
-            - waba:chat:reopened
+          $ref: '#/components/schemas/WabaChatEventType'
         chat:
           $ref: '#/components/schemas/WabaChatInfo'
         account:
@@ -670,13 +654,7 @@ components:
         - account
       properties:
         event_type:
-          type: string
-          description: Webhook event name
-          example: waba:account:active
-          enum:
-            - waba:account:active
-            - waba:account:disabled
-            - waba:account:disconnected
+          $ref: '#/components/schemas/WabaAccountEventType'
         account:
           $ref: '#/components/schemas/WabaAccountInfo'
 
@@ -687,17 +665,55 @@ components:
         - template
       properties:
         event_type:
-          type: string
-          description: Webhook event name
-          example: waba:template:approved
-          enum:
-            - waba:template:approved
-            - waba:template:rejected
-            - waba:template:disabled
+          $ref: '#/components/schemas/WabaTemplateEventType'
         template:
           $ref: '#/components/schemas/WabaTemplateInfo'
 
 # Subobjects
+    WabaMessageEventType:
+      type: string
+      description: Webhook event name
+      example: waba:message:received
+      enum:
+        - waba:message:received
+        - waba:message:delivered
+        - waba:message:failed
+        - waba:message:read
+
+    WabaChatEventType:
+      type: string
+      description: Webhook event name
+      example: waba:chat:incoming
+      enum:
+        - waba:chat:incoming
+        - waba:chat:outgoing
+        - waba:chat:assigned
+        - waba:chat:unassigned
+        - waba:chat:closed
+        - waba:chat:reopened
+
+    WabaAccountEventType:
+      type: string
+      description: Webhook event name
+      example: waba:account:active
+      enum:
+        - waba:account:active
+        - waba:account:disabled
+        - waba:account:disconnected
+      x-enum-varnames:
+        - waba_account_activated
+        - waba_account_disabled
+        - waba_account_disconnected
+
+    WabaTemplateEventType:
+      type: string
+      description: Webhook event name
+      example: waba:template:approved
+      enum:
+        - waba:template:approved
+        - waba:template:rejected
+        - waba:template:disabled
+
     AccountDataWhatsappAccountInfo:
       type: object
       required:
@@ -1142,8 +1158,6 @@ components:
       allOf:
         - $ref: '#/components/schemas/MessageDataWhatsappAccountInfo'
         - type: object
-          required:
-            - whatsapp_account_wid
           properties:
             whatsapp_account_wid:
               type: string
@@ -1353,8 +1367,6 @@ components:
           oneOf:
             - type: integer
             - type: string
-              enum:
-                - ''
           example: 131047
         title:
           type: string
