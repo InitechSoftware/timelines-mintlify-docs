@@ -139,7 +139,7 @@ webhooks:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PartnerAPIWhWhatsappAccount'
+              $ref: '#/components/schemas/PartnerAPIWhWhatsappAccountDisconnected'
       responses:
         '200':
           description: 'Receiver accepted the event'
@@ -394,10 +394,37 @@ components:
           type: string
           format: date-time
           example: 2024-01-01T12:00:00Z
-        reason:
-          type: string
-          example: "(logged out)"
       type: object
+    PartnerAPIWhWhatsappAccountDisconnected:
+      description: Webhook payload sent when a WhatsApp account is disconnected. It carries
+        two fields the connected event does not.
+      allOf:
+        - $ref: '#/components/schemas/PartnerAPIWhWhatsappAccount'
+        - required:
+            - reason
+            - details
+          properties:
+            reason:
+              description: >-
+                Why the session ended. "logged out from Timelines" - the number was
+                disconnected in Timelines. "logged out from another device" - the phone
+                dropped the companion, through Linked devices or by enabling coexistence;
+                this is not a ban. "banned" - WhatsApp locked the primary device. "other" -
+                anything else.
+              type: string
+              enum:
+                - logged out from Timelines
+                - logged out from another device
+                - banned
+                - other
+              example: logged out from another device
+            details:
+              description: >-
+                Free text about the same event, empty when there is none. Not meant to be
+                parsed - it is there to be read.
+              type: string
+              example: "401: logged out from another device"
+          type: object
     PartnerAPIWhPublicApiTokenRotated:
       required:
         - workspace_id

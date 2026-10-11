@@ -91,7 +91,7 @@ webhooks:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AccountData'
+              $ref: '#/components/schemas/DisconnectedAccountData'
       responses:
         '200':
           description: 'Receiver accepted the event'
@@ -122,6 +122,39 @@ webhooks:
           application/json:
             schema:
               $ref: '#/components/schemas/AccountData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  whatsapp:account:reachout_timelock:active:
+    post:
+      summary: >-
+        Triggered when WhatsApp starts restricting this account from reaching out to
+        people it has not spoken to. The account keeps working for the conversations it
+        already has, so it is neither disconnected nor suspended.
+      tags:
+        - whatsapp_accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReachoutTimelockAccountData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  whatsapp:account:reachout_timelock:cleared:
+    post:
+      summary: Triggered when that restriction lifts.
+      tags:
+        - whatsapp_accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReachoutTimelockAccountData'
       responses:
         '200':
           description: 'Receiver accepted the event'
@@ -544,6 +577,37 @@ components:
         whatsapp_account:
           $ref: '#/components/schemas/AccountDataWhatsappAccountInfo'
 
+    ReachoutTimelockAccountData:
+      type: object
+      required:
+        - event_type
+        - whatsapp_account
+      properties:
+        event_type:
+          type: string
+          description: Webhook event name
+          example: whatsapp:account:reachout_timelock:active
+          enum:
+            - whatsapp:account:reachout_timelock:active
+            - whatsapp:account:reachout_timelock:cleared
+        whatsapp_account:
+          $ref: '#/components/schemas/ReachoutTimelockAccountInfo'
+
+    DisconnectedAccountData:
+      type: object
+      required:
+        - event_type
+        - whatsapp_account
+      properties:
+        event_type:
+          type: string
+          description: Webhook event name
+          example: whatsapp:account:disconnected
+          enum:
+            - whatsapp:account:disconnected
+        whatsapp_account:
+          $ref: '#/components/schemas/DisconnectedAccountInfo'
+
     MessageData:
       type: object
       required:
@@ -752,6 +816,67 @@ components:
         owner_email:
           type: string
           example: john-smith@example.com
+
+    ReachoutTimelockAccountInfo:
+      description: >-
+        The WhatsApp account block of the reach-out timelock events. It carries three
+        fields the connected, suspended and resumed events do not.
+      allOf:
+        - $ref: '#/components/schemas/AccountDataWhatsappAccountInfo'
+        - type: object
+          required:
+            - reachout_timelock_active
+            - reachout_timelock_type
+            - reachout_timelock_ends_at
+          properties:
+            reachout_timelock_active:
+              type: boolean
+              description: >-
+                Whether the restriction is in force. True on
+                whatsapp:account:reachout_timelock:active, false on the cleared event.
+              example: true
+            reachout_timelock_type:
+              type: string
+              description: The restriction WhatsApp named; empty string when it named none.
+              example: RESTRICT_ALL_COMPANIONS
+            reachout_timelock_ends_at:
+              type: string
+              description: >-
+                When the restriction is due to lift, in the workspace timezone. Empty on
+                the cleared event, and when WhatsApp gave no end time.
+              example: 2024-01-08 10:35:18 +0200
+
+    DisconnectedAccountInfo:
+      description: >-
+        The WhatsApp account block of whatsapp:account:disconnected. It carries two fields
+        the connected, suspended and resumed events do not.
+      allOf:
+        - $ref: '#/components/schemas/AccountDataWhatsappAccountInfo'
+        - type: object
+          required:
+            - reason
+            - details
+          properties:
+            reason:
+              type: string
+              description: >-
+                Why the session ended. "logged out from Timelines" - the number was
+                disconnected in Timelines. "logged out from another device" - the phone
+                dropped the companion, through Linked devices or by enabling coexistence;
+                this is not a ban. "banned" - WhatsApp locked the primary device. "other" -
+                anything else.
+              enum:
+                - logged out from Timelines
+                - logged out from another device
+                - banned
+                - other
+              example: logged out from another device
+            details:
+              type: string
+              description: >-
+                Free text about the same event, empty when there is none. Not meant to be
+                parsed - it is there to be read.
+              example: "401: logged out from another device"
 
     PartyInfo:
       type: object
