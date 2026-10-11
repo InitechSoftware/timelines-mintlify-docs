@@ -278,7 +278,9 @@
               "webhook-reference/whatsapp_accounts/triggered-when-whatsapp-account-was-reconnected",
               "webhook-reference/whatsapp_accounts/triggered-when-whatsapp-account-was-disconnected",
               "webhook-reference/whatsapp_accounts/triggered-when-a-whatsapp-account-message-syncing-is-suspended-for-a-reason-such-as-subscription-cancellation-or-downgrade",
-              "webhook-reference/whatsapp_accounts/triggered-when-a-whatsapp-account-message-syncing-is-resumed"
+              "webhook-reference/whatsapp_accounts/triggered-when-a-whatsapp-account-message-syncing-is-resumed",
+              "webhook-reference/whatsapp_accounts/triggered-when-whatsapp-starts-restricting-this-account-from-reaching-out-to-people-it-has-not-spoken-to-the-account-keeps-working-for-the-conversations-it-already-has-so-it-is-neither-disconnected-nor-suspended",
+              "webhook-reference/whatsapp_accounts/triggered-when-that-restriction-lifts"
             ]
           },
           {
