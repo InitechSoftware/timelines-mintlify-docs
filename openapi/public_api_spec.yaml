@@ -1943,6 +1943,7 @@ components:
             the not-attended flow; cleared once the chat is handled. (Same underlying
             value as the webhook field `unattended_customer`.)
         group_members:
+          description: Only in the specific-chat response; the chat lists omit it.
           type: array
           items:
             type: object
@@ -2451,6 +2452,7 @@ components:
           example: https://acme.com/logo.png
           type: string
         group_members:
+          description: Only in the specific-chat response; the chat lists omit it.
           type: array
           items:
             type: object
