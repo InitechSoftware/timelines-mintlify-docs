@@ -3248,6 +3248,8 @@ components:
         - message:new
         - message:sent:new
         - message:received:new
+        - message:delivered
+        - message:read
         - whatsapp:account:connected
         - whatsapp:account:disconnected
         - whatsapp:account:suspended
@@ -3279,10 +3281,15 @@ components:
         - waba:template:approved
         - waba:template:rejected
         - waba:template:disabled
+        - chat:renamed
+        - message:deleted
+        - message:edited
       x-enum-varnames:
         - message_new
         - message_sent_new
         - message_received_new
+        - message_delivered
+        - message_read
         - whatsapp_account_connected
         - whatsapp_account_disconnected
         - whatsapp_account_suspended
@@ -3314,6 +3321,9 @@ components:
         - waba_template_approved
         - waba_template_rejected
         - waba_template_disabled
+        - chat_renamed
+        - message_deleted
+        - message_edited
       description: 'Event topic that will trigger the webhook. For the current
         list of supported values see the [Webhooks events documentation](https://timelinesai.mintlify.dev/docs/webhook-reference/overview#available-events)
         (for example: `message:sent:new`, `message:received:new`).'

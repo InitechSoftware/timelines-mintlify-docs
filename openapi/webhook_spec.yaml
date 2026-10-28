@@ -66,6 +66,66 @@ webhooks:
         '200':
           description: 'Receiver accepted the event'
 
+  message:delivered:
+    post:
+      summary: Triggered when an outgoing WA message is first delivered.
+      tags:
+        - messages
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageStatusData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  message:read:
+    post:
+      summary: Triggered when an outgoing WA message is first read.
+      tags:
+        - messages
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageStatusData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  message:deleted:
+    post:
+      summary: Triggered when a WA message is deleted for everyone.
+      tags:
+        - messages
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageDeletedData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  message:edited:
+    post:
+      summary: Triggered when a WA message is edited.
+      tags:
+        - messages
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageEditedData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
   whatsapp:account:connected:
     post:
       summary: Triggered when WhatsApp account was (re)connected.
@@ -230,6 +290,21 @@ webhooks:
           application/json:
             schema:
               $ref: '#/components/schemas/ChatData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  chat:renamed:
+    post:
+      summary: Triggered when a WA chat's display name changes.
+      tags:
+        - chats
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRenamedData'
       responses:
         '200':
           description: 'Receiver accepted the event'
@@ -608,6 +683,224 @@ components:
         whatsapp_account:
           $ref: '#/components/schemas/DisconnectedAccountInfo'
 
+    MessageStatusEventType:
+      type: string
+      description: Webhook event name
+      example: message:delivered
+      enum:
+        - message:delivered
+        - message:read
+
+    MessageStatusInfo:
+      type: object
+      description: Status ping for an outgoing WA message. No chat, account, or body.
+      required:
+        - message_uid
+        - whatsapp_message_id
+        - status
+        - message_timestamp
+        - status_timestamp
+      properties:
+        message_uid:
+          type: string
+          description: Same value as uid on GET /messages/{uid}.
+          example: a5bbb005-37f2-402c-96fa-e479a2e09b02
+        whatsapp_message_id:
+          type: string
+          description: "WhatsApp's message id for that message, the same value on every connected number that synced it; dedup key across numbers."
+          example: 3EB04C18D44BB2F9422B95
+        status:
+          type: string
+          description: Title-case WhatsApp status, Delivered or Read.
+          example: Delivered
+        message_timestamp:
+          type: string
+          description: WhatsApp message time (Message.timestamp). Same clock as timestamp on GET /messages/{uid} and on message:sent:new.
+          example: '2024-01-15 10:30:00 +0200'
+        status_timestamp:
+          type: string
+          description: When this Delivered or Read status was recorded.
+          example: '2024-01-15 10:30:12 +0200'
+
+    MessageStatusData:
+      type: object
+      required:
+        - event_type
+        - message
+      properties:
+        event_type:
+          $ref: '#/components/schemas/MessageStatusEventType'
+        message:
+          $ref: '#/components/schemas/MessageStatusInfo'
+
+    MessageDeletedEventType:
+      type: string
+      description: Webhook event name
+      example: message:deleted
+      enum:
+        - message:deleted
+
+    MessageDeletedInfo:
+      type: object
+      description: Delete-for-everyone notice for a WA message. No chat, account, or body.
+      required:
+        - message_uid
+        - whatsapp_message_id
+        - message_timestamp
+        - deleted_timestamp
+        - deleted_by_me
+      properties:
+        message_uid:
+          type: string
+          description: Same value as uid on GET /messages/{uid}.
+          example: a5bbb005-37f2-402c-96fa-e479a2e09b02
+        whatsapp_message_id:
+          type: string
+          description: "WhatsApp's message id for that message, the same value on every connected number that synced it; dedup key across numbers."
+          example: 3EB04C18D44BB2F9422B95
+        message_timestamp:
+          type: string
+          description: WhatsApp message time (Message.timestamp). Same clock as timestamp on GET /messages/{uid} and on message:sent:new.
+          example: '2024-01-15 10:30:00 +0200'
+        deleted_timestamp:
+          type: string
+          description: When this delete-for-everyone was recorded.
+          example: '2024-01-15 10:40:00 +0200'
+        deleted_by_me:
+          type: boolean
+          description: True when this workspace's own account deleted the message (phone or any linked device). False when the correspondent did.
+          example: false
+
+    MessageDeletedData:
+      type: object
+      required:
+        - event_type
+        - message
+      properties:
+        event_type:
+          $ref: '#/components/schemas/MessageDeletedEventType'
+        message:
+          $ref: '#/components/schemas/MessageDeletedInfo'
+
+    MessageEditedEventType:
+      type: string
+      description: Webhook event name
+      example: message:edited
+      enum:
+        - message:edited
+
+    MessageEditedInfo:
+      type: object
+      description: Edit notice for a WA message. No chat, account, or attachments.
+      required:
+        - message_uid
+        - whatsapp_message_id
+        - text
+        - previous_text
+        - message_timestamp
+        - edited_timestamp
+      properties:
+        message_uid:
+          type: string
+          description: Same value as uid on GET /messages/{uid}.
+          example: a5bbb005-37f2-402c-96fa-e479a2e09b02
+        whatsapp_message_id:
+          type: string
+          description: "WhatsApp's message id for that message, the same value on every connected number that synced it; dedup key across numbers."
+          example: 3EB04C18D44BB2F9422B95
+        text:
+          type: string
+          description: New message text (Message.body), sanitized the same way as text on message:sent:new.
+          example: Updated hello
+        previous_text:
+          type: string
+          description: Message text before this edit. Empty when the message had no text.
+          example: hello
+        message_timestamp:
+          type: string
+          description: WhatsApp message time (Message.timestamp). Same clock as timestamp on GET /messages/{uid} and on message:sent:new.
+          example: '2024-01-15 10:30:00 +0200'
+        edited_timestamp:
+          type: string
+          description: When this edit was recorded.
+          example: '2024-01-15 10:40:00 +0200'
+
+    MessageEditedData:
+      type: object
+      required:
+        - event_type
+        - message
+      properties:
+        event_type:
+          $ref: '#/components/schemas/MessageEditedEventType'
+        message:
+          $ref: '#/components/schemas/MessageEditedInfo'
+
+    ChatRenamedEventType:
+      type: string
+      description: Webhook event name
+      example: chat:renamed
+      enum:
+        - chat:renamed
+
+    ChatRenameReason:
+      type: string
+      description: Why the display name changed.
+      example: renamed_in_app
+      enum:
+        - renamed_in_app
+        - group_subject_changed
+        - contact_name_added
+        - contact_name_changed
+        - profile_name_changed
+        - business_name_set
+        - whatsapp
+
+    ChatRenamedInfo:
+      type: object
+      description: Display-name change for a WA chat. No account, labels, or message.
+      required:
+        - id
+        - name
+        - previous_name
+        - reason
+        - created_timestamp
+        - renamed_timestamp
+      properties:
+        id:
+          type: integer
+          description: Same chat id as chat:new and GET /chats/{id}.
+          example: 123456
+        name:
+          type: string
+          description: New display name (Timeline.title).
+          example: Acme Support
+        previous_name:
+          type: string
+          description: Display name before this rename.
+          example: John Doe
+        reason:
+          $ref: '#/components/schemas/ChatRenameReason'
+        created_timestamp:
+          type: string
+          description: When the chat was created. Same clock as created_timestamp on chat:new.
+          example: '2024-01-15 10:00:00 +0200'
+        renamed_timestamp:
+          type: string
+          description: When this rename was persisted.
+          example: '2024-01-15 11:02:00 +0200'
+
+    ChatRenamedData:
+      type: object
+      required:
+        - event_type
+        - chat
+      properties:
+        event_type:
+          $ref: '#/components/schemas/ChatRenamedEventType'
+        chat:
+          $ref: '#/components/schemas/ChatRenamedInfo'
+
     MessageData:
       type: object
       required:
@@ -926,6 +1219,7 @@ components:
         - timestamp
         - received_timestamp
         - message_uid
+        - whatsapp_message_id
         - sender
         - recipient
 
@@ -950,6 +1244,10 @@ components:
         message_uid:
           type: string
           example: c7ec509d-0171-1ead-a84b-c6943a644768
+        whatsapp_message_id:
+          type: string
+          description: "WhatsApp's message id for that message, the same value on every connected number that synced it; dedup key across numbers."
+          example: 3EB04C18D44BB2F9422B95
         reply_to_uid:
           type: string
           example: c7ec509d-0171-1ead-a84b-c6943a644768
@@ -1306,6 +1604,7 @@ components:
       type: object
       required:
         - message_uid
+        - whatsapp_message_id
         - action
         - emoji
         - timestamp
@@ -1315,6 +1614,10 @@ components:
           type: string
           description: UID of the message that was reacted to
           example: c7ec509d-0171-1ead-a84b-c6943a644768
+        whatsapp_message_id:
+          type: string
+          description: "WhatsApp's message id for that message, the same value on every connected number that synced it; dedup key across numbers."
+          example: 3EB04C18D44BB2F9422B95
         action:
           type: string
           description: "Reaction action: set or clear"

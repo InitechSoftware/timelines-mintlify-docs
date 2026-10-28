@@ -37,6 +37,10 @@ Real-time notifications for all message activity in your workspace.
 | `message:received:new` | Incoming message | A customer or contact sends you a message |
 | `message:sent:new` | Outgoing message | A message you sent is processed |
 | `message:reaction` | Reaction set or cleared | An emoji reaction is added to or removed from a message |
+| `message:delivered` | Outgoing message delivered | An outgoing message is delivered for the first time |
+| `message:read` | Outgoing message read | An outgoing message is read for the first time |
+| `message:edited` | Message edited | The text of an existing message is edited |
+| `message:deleted` | Message deleted | A message is deleted for everyone |
 
 ### Chat events
 
@@ -49,6 +53,7 @@ Track conversation lifecycle and assignment changes.
 | `chat:outgoing:new` | New outgoing chat | You start a new conversation |
 | `chat:responsible:assigned` | Chat reassigned | A chat is assigned to a team member |
 | `chat:responsible:unassigned` | Chat unassigned | A chat's assignment is removed |
+| `chat:renamed` | Chat renamed | A chat's display name changes |
 
 ### Call events
 
