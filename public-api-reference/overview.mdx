@@ -38,7 +38,7 @@ All requests require Bearer token authentication. See [Authentication](/authenti
     Subscribe to real-time events like new messages, sent messages, and chat updates.
   </Card>
   <Card title="WhatsApp Accounts" icon="phone" href="/public-api-reference/list-whatsapp-accounts-connected-in-your-timelinesai-workspace">
-    List all connected WhatsApp numbers in your workspace.
+    List connected numbers, or link a new one with a pairing code.
   </Card>
   <Card title="Workspace Info" icon="chart-bar" href="/public-api-reference/workspace-info-and-all-current-quotas-and-utilization-stats">
     View workspace details, plan, and current quota utilization.
@@ -54,7 +54,7 @@ All requests require Bearer token authentication. See [Authentication](/authenti
 | **Reactions**         | `GET /messages/{uid}/reactions`, `PUT /messages/{uid}/reactions`                             | Read and update message reactions                                                |
 | **Files**             | `GET /files`, `POST /files`, `POST /files_upload`, `GET /files/{uid}`, `DELETE /files/{uid}` | Upload, list, download, and delete files                                         |
 | **Labels**            | `GET /chats/{id}/labels`, `PUT /chats/{id}/labels`, `POST /chats/{id}/labels`                | List, add, and replace chat labels                                               |
-| **WhatsApp Accounts** | `GET /whatsapp_accounts`                                                                     | List connected WhatsApp numbers                                                  |
+| **WhatsApp Accounts** | `GET /whatsapp_accounts`, `POST /whatsapp_accounts/phone_pairing`, `GET /whatsapp_accounts/phone_pairing/{id}` | List connected numbers, start a phone link, and read its status                  |
 | **Teammates**         | `GET /workspace/teammates`, `POST /workspace/invitations`, `DELETE /workspace/invitations/{user_id}` | List teammates, invite, and revoke invitations                                   |
 | **Workspace**         | `GET /workspace`                                                                                 | Workspace info, plan, and quota utilization                                      |
 | **Webhooks**          | `GET /webhooks`, `POST /webhooks`, `GET/PUT/DELETE /webhooks/{id}`                           | Manage webhook subscriptions                                                     |

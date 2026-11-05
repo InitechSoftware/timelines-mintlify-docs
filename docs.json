@@ -118,7 +118,9 @@
           {
             "group": "WhatsApp Accounts",
             "pages": [
-              "public-api-reference/list-whatsapp-accounts-connected-in-your-timelinesai-workspace"
+              "public-api-reference/list-whatsapp-accounts-connected-in-your-timelinesai-workspace",
+              "public-api-reference/start-linking-a-whatsapp-number-by-phone-pairing-code",
+              "public-api-reference/read-the-status-of-a-phone-link"
             ]
           },
           {
