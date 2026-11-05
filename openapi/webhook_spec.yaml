@@ -68,7 +68,7 @@ webhooks:
 
   message:delivered:
     post:
-      summary: Triggered when an outgoing WA message is first delivered.
+      summary: Triggered when an outgoing WhatsApp message is first delivered.
       tags:
         - messages
       requestBody:
@@ -83,7 +83,7 @@ webhooks:
 
   message:read:
     post:
-      summary: Triggered when an outgoing WA message is first read.
+      summary: Triggered when an outgoing WhatsApp message is first read.
       tags:
         - messages
       requestBody:
@@ -98,7 +98,7 @@ webhooks:
 
   message:deleted:
     post:
-      summary: Triggered when a WA message is deleted for everyone.
+      summary: Triggered when a WhatsApp message is deleted for everyone.
       tags:
         - messages
       requestBody:
@@ -113,7 +113,7 @@ webhooks:
 
   message:edited:
     post:
-      summary: Triggered when a WA message is edited.
+      summary: Triggered when a WhatsApp message is edited.
       tags:
         - messages
       requestBody:
@@ -296,7 +296,7 @@ webhooks:
 
   chat:renamed:
     post:
-      summary: Triggered when a WA chat's display name changes.
+      summary: Triggered when a WhatsApp chat's display name changes.
       tags:
         - chats
       requestBody:
@@ -693,7 +693,7 @@ components:
 
     MessageStatusInfo:
       type: object
-      description: Status ping for an outgoing WA message. No chat, account, or body.
+      description: Status of an outgoing WhatsApp message. No chat, account, or body.
       required:
         - message_uid
         - whatsapp_message_id
@@ -715,7 +715,7 @@ components:
           example: Delivered
         message_timestamp:
           type: string
-          description: WhatsApp message time (Message.timestamp). Same clock as timestamp on GET /messages/{uid} and on message:sent:new.
+          description: WhatsApp message time. Same clock as timestamp on GET /messages/{uid} and on message:sent:new.
           example: '2024-01-15 10:30:00 +0200'
         status_timestamp:
           type: string
@@ -742,7 +742,7 @@ components:
 
     MessageDeletedInfo:
       type: object
-      description: Delete-for-everyone notice for a WA message. No chat, account, or body.
+      description: Notice that a WhatsApp message was deleted for everyone. No chat, account, or body.
       required:
         - message_uid
         - whatsapp_message_id
@@ -760,7 +760,7 @@ components:
           example: 3EB04C18D44BB2F9422B95
         message_timestamp:
           type: string
-          description: WhatsApp message time (Message.timestamp). Same clock as timestamp on GET /messages/{uid} and on message:sent:new.
+          description: WhatsApp message time. Same clock as timestamp on GET /messages/{uid} and on message:sent:new.
           example: '2024-01-15 10:30:00 +0200'
         deleted_timestamp:
           type: string
@@ -791,7 +791,7 @@ components:
 
     MessageEditedInfo:
       type: object
-      description: Edit notice for a WA message. No chat, account, or attachments.
+      description: Notice that a WhatsApp message was edited. No chat, account, or attachments.
       required:
         - message_uid
         - whatsapp_message_id
@@ -810,7 +810,7 @@ components:
           example: 3EB04C18D44BB2F9422B95
         text:
           type: string
-          description: New message text (Message.body), sanitized the same way as text on message:sent:new.
+          description: New message text, sanitized the same way as text on message:sent:new.
           example: Updated hello
         previous_text:
           type: string
@@ -818,7 +818,7 @@ components:
           example: hello
         message_timestamp:
           type: string
-          description: WhatsApp message time (Message.timestamp). Same clock as timestamp on GET /messages/{uid} and on message:sent:new.
+          description: WhatsApp message time. Same clock as timestamp on GET /messages/{uid} and on message:sent:new.
           example: '2024-01-15 10:30:00 +0200'
         edited_timestamp:
           type: string
@@ -845,7 +845,15 @@ components:
 
     ChatRenameReason:
       type: string
-      description: Why the display name changed.
+      description: |
+        Why the display name changed:
+        - `renamed_in_app` — Renamed in Timelines, in the app or through the Public API.
+        - `group_subject_changed` — The WhatsApp group subject changed.
+        - `contact_name_added` — The contact received an address-book name. The previous name was the phone number.
+        - `contact_name_changed` — The address-book name was replaced.
+        - `profile_name_changed` — The WhatsApp profile name changed.
+        - `business_name_set` — A verified business name was applied.
+        - `whatsapp` — The name changed on WhatsApp, and none of the reasons above applies.
       example: renamed_in_app
       enum:
         - renamed_in_app
@@ -858,7 +866,7 @@ components:
 
     ChatRenamedInfo:
       type: object
-      description: Display-name change for a WA chat. No account, labels, or message.
+      description: A WhatsApp chat's display name change. No account, labels, or message.
       required:
         - id
         - name
@@ -873,7 +881,7 @@ components:
           example: 123456
         name:
           type: string
-          description: New display name (Timeline.title).
+          description: New display name.
           example: Acme Support
         previous_name:
           type: string

@@ -1136,6 +1136,83 @@ paths:
               schema:
                 $ref: '#/components/schemas/WhatsappAccountsResponse'
         <<: *http_errors_common
+  /whatsapp_accounts/phone_pairing:
+    post:
+      summary: Start linking a WhatsApp number by phone pairing code.
+      description: |
+        Starts linking a WhatsApp number to a workspace member with a pairing code instead of a QR scan. The response comes back before WhatsApp issues the code, usually in state `starting`; poll `GET /whatsapp_accounts/phone_pairing/{id}` until the state is `awaiting_code`, then the member enters `pairing_code` in WhatsApp (Linked devices → Link with phone number). Requires the `accounts:write` scope.
+
+        **Who the link is for**
+
+        - User-scoped token: `user_id` is optional. Omitted, or equal to the token's user, the link belongs to that user. A caller whose role can manage members may pass another member's `user_id`, and the link belongs to that member; a caller without that permission gets `403` `permission_denied`.
+        - Legacy workspace token: `user_id` is required, and the link belongs to that active member.
+        - The member's role must be able to connect WhatsApp accounts, as in the web app; a collaborator gets `403` `permission_denied`.
+
+        **Repeated calls**
+
+        While the member's link for the same `phone`, started with this call, is still `starting` or `awaiting_code` and less than a day old, another call returns that link (same `id`, current state and code) instead of starting a new one, so the call is safe to retry. If that link reads `code_unavailable`, the call ends it and starts a new link with a new `id`, and the old `id` keeps reading `code_unavailable`. A link a day old, which the status read no longer finds, is replaced the same way. Such a link for a different `phone` is replaced too, so a stuck link never blocks the member. A link the member started from the web app is not returned: the call is refused with `member_has_phone_link_in_progress` until that link ends.
+
+        A WABA account on the same phone does not block the link: WABA and QR numbers each need their own free seat, and the same phone may be both.
+
+        **Errors**
+
+        `message` is the `error_code` with spaces instead of underscores. Checks run in this order and the first one that fails is returned:
+
+        | Order | `error_code` | HTTP | `message` | When |
+        |---|---|---|---|---|
+        | 1 | `validation_error` | 400 | `validation error` | `user_id` is not an integer |
+        | 2 | `user_id_required` | 400 | `user id required` | Legacy workspace token without `user_id` |
+        | 3 | `permission_denied` | 403 | `permission denied` | Another member's `user_id` from a caller who cannot manage members |
+        | 4 | `member_not_found` | 404 | `member not found` | `user_id` is not an active member of this workspace |
+        | 5 | `permission_denied` | 403 | `permission denied` | The member's role cannot connect WhatsApp accounts |
+        | 6 | `validation_error` | 400 | `validation error` | `phone` is missing or not a valid phone number |
+        | 7 | `account_already_connected` | 400 | `account already connected` | A WhatsApp (QR) account in this workspace is already connected on this phone |
+        | 8 | `member_has_connected_account` | 400 | `member has connected account` | The member already has a different connected number |
+        | 9 | `member_has_phone_link_in_progress` | 400 | `member has phone link in progress` | The member is already linking a different phone (a link still `starting` or `awaiting_code`), or this phone from the web app |
+        | 10 | `number_pairing_in_progress` | 403 | `number pairing in progress` | Another member is already linking this phone |
+        | 11 | `member_has_qr_connection_in_progress` | 400 | `member has qr connection in progress` | The member has a QR connection in progress |
+        | 12 | `number_not_allowed` | 403 | `number not allowed` | This phone is not allowed to be linked with TimelinesAI |
+        | 13 | `connected_accounts_limit_reached` | 403 | `connected accounts limit reached` | Connected accounts and links in progress fill the workspace seats |
+
+        A link the member already started with this call for the same `phone` is returned before checks 7–13. A new link that replaces one goes through every check, with the old link's seat counted as free; a refused call leaves the old link as it was.
+
+        Some refusals can only be made once the phone has accepted the code. Such a link reads `failed`, and its `message` says why; see `PhoneLinkStatus.message`.
+      requestBody:
+        description: The phone to link and, optionally, the member it is for.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhonePairingRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhonePairingResponse'
+        <<: *http_errors_common
+  /whatsapp_accounts/phone_pairing/{id}:
+    get:
+      summary: Read the status of a phone link.
+      description: |
+        Returns the current state of a link started with `POST /whatsapp_accounts/phone_pairing`. A token reads the links of members whose WhatsApp accounts it can see: its own, its team's if its role can see team accounts, and every link if its role can see all accounts. A legacy workspace token reads every link of the workspace. Reading never changes the link. Requires the `accounts:read` scope.
+
+        **Errors**
+
+        | `error_code` | HTTP | `message` | When |
+        |---|---|---|---|
+        | `not_found` | 404 | `not found` | No such link in this workspace: the link started more than 24 hours ago, the token belongs to another workspace, the token cannot see that member's accounts, the link was started from the web app, or `id` is not a link id |
+      parameters:
+      - $ref: '#/components/parameters/phone_link_id'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhonePairingResponse'
+        <<: *http_errors_common
   /workspace:
     get:
       summary: Workspace info and all current quotas and utilization stats.
@@ -1765,6 +1842,14 @@ components:
         type: string
       required: true
       example: '42'
+    phone_link_id:
+      description: The `id` of the phone link, as returned by POST /whatsapp_accounts/phone_pairing.
+      in: path
+      name: id
+      schema:
+        type: integer
+      required: true
+      example: 1234
   responses:
     OK:
       description: Successful query
@@ -1993,6 +2078,7 @@ components:
       - connected_on
       - meta_phone_id
       - display_phone_number
+      - access_level
       properties:
         id:
           type: integer
@@ -2021,6 +2107,17 @@ components:
         display_phone_number:
           type: string
           example: '+1 555 010 1234'
+        access_level:
+          type: string
+          enum:
+          - number
+          - chat
+          example: number
+          description: >
+            `number` — the number is assigned to the caller: any of its chats, new chats and its templates.
+            `chat` — the caller only has a chat on this number assigned to them: they can write in that chat
+            and send its WABA's approved templates, but cannot start new chats from the number.
+            Always `number` for a workspace-level API key.
     WabaProfileInfo:
       type: object
       required:
@@ -3370,7 +3467,7 @@ components:
           enum:
             - missing_credentials      # 401 — Authorization header absent
             - invalid_token            # 401 — token unknown/expired/revoked
-            - member_not_found         # 403 — token resolved but no workspace member
+            - member_not_found         # 403 — token resolved but no workspace member; 404 — phone pairing user_id is not an active member
             - permission_denied        # 403 — token resolved but caller lacks permission for the resource
             - insufficient_scope       # 403 — token is missing the OAuth scope required for this operation
             - plan_feature_unavailable # 403 — workspace plan does not include the feature
@@ -3385,6 +3482,14 @@ components:
             - service_window_closed    # 409 — WABA free-text/file send attempted outside the open 24h customer service window
             - not_supported            # 405 — feature unavailable for this WhatsApp account (e.g. WABA-only operation on a QR account)
             - internal_error           # 500 — unexpected server-side error
+            - account_already_connected # 400 — an active QR account in this workspace already uses this phone
+            - member_has_connected_account # 400 — this member already has a different connected QR number
+            - member_has_phone_link_in_progress # 400 — this member is already pairing a different phone, or this phone from the web app
+            - number_pairing_in_progress # 403 — another member is already pairing this phone
+            - member_has_qr_connection_in_progress # 400 — this member already has a QR connection in progress
+            - connected_accounts_limit_reached # 403 — connected accounts and in-progress phone links fill the seat limit
+            - user_id_required         # 400 — a workspace token must name the member to pair
+            - number_not_allowed       # 403 — the phone is not allowed to be linked with TimelinesAI
         errors:
           type: array
           description: Per-field validation diagnostics for request-schema (body/params)
@@ -3667,6 +3772,99 @@ components:
           - error
         data:
           $ref: '#/components/schemas/WhatsappAccountsList'
+    PhonePairingRequest:
+      type: object
+      required:
+      - phone
+      properties:
+        phone:
+          type: string
+          description: The WhatsApp phone number to link, in international format.
+          example: '+972501234567'
+        user_id:
+          type: integer
+          description: >
+            The member the link is for: the integer `user_id` from GET /workspace/teammates,
+            the same id as DELETE /workspace/invitations/{user_id}. Optional on a
+            user-scoped token, required on a legacy workspace token.
+          example: 42
+    PhoneLinkState:
+      type: string
+      enum:
+      - starting
+      - awaiting_code
+      - connected
+      - expired
+      - code_unavailable
+      - failed
+      description: >
+        `starting` — WhatsApp has not issued the code yet; read the status again.
+        `awaiting_code` — the member enters `pairing_code` in WhatsApp; right after the
+        code is entered, while the connection completes, `pairing_code` is empty.
+        `connected` — the number is linked, see `whatsapp_account_id`.
+        `expired` — the code was issued but not entered in time; offer a new code with a new
+        POST /whatsapp_accounts/phone_pairing.
+        `code_unavailable` — WhatsApp never issued a code; start again with a new
+        POST /whatsapp_accounts/phone_pairing. The member has nothing to fix.
+        `failed` — WhatsApp refused the attempt, the link did not connect, or a link that
+        connected was later logged out or banned; `message` says why. Do not retry automatically.
+      example: awaiting_code
+    PhoneLinkStatus:
+      type: object
+      required:
+      - id
+      - phone
+      - state
+      - pairing_code
+      - whatsapp_account_id
+      - message
+      properties:
+        id:
+          type: integer
+          description: The link id, used to read its status.
+          example: 1234
+        phone:
+          type: string
+          description: The phone being linked.
+          example: '+972501234567'
+        state:
+          $ref: '#/components/schemas/PhoneLinkState'
+        pairing_code:
+          type: string
+          description: >
+            The code to enter in WhatsApp: 8 characters, no hyphen, may contain letters.
+            The same code is returned on every read. Empty string outside `awaiting_code`.
+          example: K7Q2M9XA
+        whatsapp_account_id:
+          type: string
+          description: >
+            The linked account, in the same WID form as `id` on GET /whatsapp_accounts.
+            Empty string unless the state is `connected`.
+          example: 972501234567@s.whatsapp.net
+        message:
+          type: string
+          description: >
+            Why the link failed, when the state is `failed`: `banned`, `logged out from another
+            device`, `logged out from Timelines`, or `other` for any reason not named. After the
+            phone accepted the code, the link may still be refused: `number_not_allowed` (the
+            phone is not allowed to be linked with TimelinesAI), `number_used_by_another_trial`
+            (the phone was linked to another trial workspace), or `connected_accounts_limit_reached`
+            (the workspace seats filled up meanwhile). Empty string in every other state.
+          example: ''
+    PhonePairingResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          $ref: '#/components/schemas/PhoneLinkStatus'
     WorkspaceTeammatesResponse:
       type: object
       required:
