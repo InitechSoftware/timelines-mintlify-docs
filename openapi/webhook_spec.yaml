@@ -54,6 +54,9 @@ webhooks:
   message:received:new:
     post:
       summary: Triggered when there is a new incoming message.
+      description: >
+        On WhatsApp numbers with voice transcription on, this event fires for a
+        voice note after its transcript is ready or after a timeout, not on receipt.
       tags:
         - messages
       requestBody:
@@ -350,6 +353,42 @@ webhooks:
           application/json:
             schema:
               $ref: '#/components/schemas/CallData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  call:recording:ready:
+    post:
+      summary: Triggered when a call recording is ready for download.
+      description: >
+        WhatsApp calling must be enabled for the workspace; otherwise this
+        event is not sent and the calls API returns `403 plan_feature_unavailable`.
+      tags:
+        - calls
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CallRecordingData'
+      responses:
+        '200':
+          description: 'Receiver accepted the event'
+
+  call:transcript:ready:
+    post:
+      summary: Triggered when a call transcript is ready for download.
+      description: >
+        WhatsApp calling must be enabled for the workspace; otherwise this
+        event is not sent and the calls API returns `403 plan_feature_unavailable`.
+      tags:
+        - calls
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CallTranscriptData'
       responses:
         '200':
           description: 'Receiver accepted the event'
@@ -955,6 +994,115 @@ components:
         call_details:
           $ref: '#/components/schemas/CallDetailsInfo'
 
+    CallRecordingData:
+      type: object
+      required:
+        - event_type
+        - chat
+        - whatsapp_account
+        - call_details
+        - recording
+      properties:
+        event_type:
+          type: string
+          description: Webhook event name
+          example: call:recording:ready
+          enum:
+            - call:recording:ready
+        chat:
+          $ref: '#/components/schemas/CallDataChatInfo'
+        whatsapp_account:
+          $ref: '#/components/schemas/CallDataWhatsappAccountInfo'
+        call_details:
+          $ref: '#/components/schemas/CallDetailsInfo'
+        recording:
+          $ref: '#/components/schemas/CallRecordingInfo'
+
+    CallRecordingInfo:
+      type: object
+      required:
+        - filename
+        - mimetype
+        - size
+        - duration
+        - channels
+        - temporary_download_url
+      properties:
+        filename:
+          type: string
+          description: recording file name (`call-{call_id}.ogg`).
+          example: call-81234.ogg
+        mimetype:
+          type: string
+          description: recording MIME type.
+          example: audio/ogg
+        size:
+          type: integer
+          description: recording file size in bytes.
+          example: 1843200
+        duration:
+          type: integer
+          description: call duration in seconds.
+          example: 287
+        channels:
+          type: integer
+          description: audio channels; stereo with the TimelinesAI agent on
+            the left and the customer on the right.
+          example: 2
+        temporary_download_url:
+          type: string
+          description: the recording as an `.ogg` file; fresh 15-minute link,
+            minted when the event fires — re-mint through
+            GET /v2/calls/{call_id}/recording after expiry.
+          example: https://...
+
+    CallTranscriptData:
+      type: object
+      required:
+        - event_type
+        - chat
+        - whatsapp_account
+        - call_details
+        - transcript
+      properties:
+        event_type:
+          type: string
+          description: Webhook event name
+          example: call:transcript:ready
+          enum:
+            - call:transcript:ready
+        chat:
+          $ref: '#/components/schemas/CallDataChatInfo'
+        whatsapp_account:
+          $ref: '#/components/schemas/CallDataWhatsappAccountInfo'
+        call_details:
+          $ref: '#/components/schemas/CallDetailsInfo'
+        transcript:
+          $ref: '#/components/schemas/CallTranscriptInfo'
+
+    CallTranscriptInfo:
+      type: object
+      required:
+        - word_count
+        - temporary_download_url
+      properties:
+        language:
+          type: string
+          nullable: true
+          description: detected transcript language as an ISO 639-1 code;
+            the key is omitted when the language couldn't be determined.
+          example: en
+        word_count:
+          type: integer
+          description: number of whitespace-separated words in the transcript.
+          example: 612
+        temporary_download_url:
+          type: string
+          description: the transcript as a `.txt` file; fresh 15-minute link,
+            minted when the event fires — re-mint through
+            GET /v2/calls/{call_id}/transcript after expiry.
+          example: https://...
+
     ReactionData:
       type: object
       required:
@@ -1235,6 +1383,16 @@ components:
         text:
           type: string
           example: Sending some example document to you
+          description: >
+            For a transcribed voice note, `text` carries the transcript and
+            `text_is_transcript` is true — a non-null `text` no longer means
+            the message has no audio.
+        text_is_transcript:
+          type: boolean
+          description: >
+            True when `text` is a voice-note transcript. False for every other
+            message. Omitted while WhatsApp calling is off for the workspace.
+          example: false
         direction:
           type: string
           example: sent
@@ -1541,6 +1699,14 @@ components:
           $ref: '#/components/schemas/PartyInfo'
         recipient:
           $ref: '#/components/schemas/PartyInfo'
+        call_id:
+          type: integer
+          description: Our id for the call, the key for GET /v2/calls/{call_id}. Omitted while WhatsApp calling is off for the workspace.
+          example: 81234
+        handled_in_timelines:
+          type: boolean
+          description: True when the call was placed in TimelinesAI. Omitted while WhatsApp calling is off for the workspace.
+          example: true
 
     ReactionDataChatInfo:
       type: object

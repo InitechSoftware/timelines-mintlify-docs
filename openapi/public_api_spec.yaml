@@ -1752,6 +1752,154 @@ paths:
               schema:
                 $ref: '#/components/schemas/SimpleSuccessResponse'
         <<: *http_errors_common
+  /v2/calls:
+    get:
+      tags:
+      - calls
+      summary: Get the list of calls in the Workspace (v2).
+      description: >
+        Calls the caller's own workspace membership has access to — the same
+        membership scoping as `GET /v2/chats`: only calls in chats the
+        membership can see. Newest first by call start, 50 per page (`page` +
+        `has_more_pages`, as on `/v2/chats`). When multiple filtering
+        parameters are specified, logical AND operation is applied.
+        WhatsApp calling must be enabled for the workspace; otherwise the
+        request returns `403 plan_feature_unavailable`.
+      parameters:
+      - in: query
+        name: chat_id
+        schema:
+          type: integer
+        description: filter calls in the specified chat (the chat id from `CallInfo`)
+        example: 1000001
+      - in: query
+        name: whatsapp_account_id
+        schema:
+          type: string
+        description: filters calls on one of the specified WhatsApp accounts
+          (in wid format, comma-separated)
+        example: 972501111111@s.whatsapp.net,972502222222@s.whatsapp.net
+      - in: query
+        name: direction
+        schema:
+          type: string
+          enum:
+          - incoming
+          - outgoing
+        description: filter incoming or outgoing calls
+        example: outgoing
+      - in: query
+        name: started_after
+        schema:
+          type: string
+          format: date-time
+        description: filter calls that started after this timestamp, can be specified
+          with started_before
+        example: '2024-12-31T23:59:59Z'
+      - in: query
+        name: started_before
+        schema:
+          type: string
+          format: date-time
+        description: filter calls that started before this timestamp, can be
+          specified with started_after
+        example: '2024-12-31T23:59:59Z'
+      - in: query
+        name: recording_status
+        schema:
+          type: string
+        description: filter calls by recording status (comma-separated values
+          from `CallRecordingStatus`; `none` matches calls with no recording)
+        example: ready,processing
+      - in: query
+        name: transcript_status
+        schema:
+          type: string
+        description: filter calls by transcript status (comma-separated values
+          from `CallTranscriptStatus`; `none` matches calls with no transcript)
+        example: ready,skipped_insufficient_credits
+      - in: query
+        name: page
+        schema:
+          type: integer
+        description: specify the page of results (each page contains up to 50 items),
+          starting with 1. Check "has more page" response value to see if more pages
+          are available.
+        example: 1
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CallInfoListResponse'
+        <<: *http_errors_common
+  /v2/calls/{call_id}:
+    get:
+      tags:
+      - calls
+      summary: Get one call by id (v2).
+      description: >
+        The call with its recording and transcript status. `404 not_found` when
+        the call does not exist, has no chat, or its chat is deleted;
+        `403 permission_denied` when it sits in a chat
+        the caller's membership cannot see.
+        WhatsApp calling must be enabled for the workspace; otherwise the
+        request returns `403 plan_feature_unavailable`.
+      parameters:
+      - $ref: '#/components/parameters/call_id'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CallInfoResponse'
+        <<: *http_errors_common
+  /v2/calls/{call_id}/recording:
+    get:
+      tags:
+      - calls
+      summary: Get a fresh download link for one call's recording (v2).
+      description: >
+        `200` only while the call's `recording_status` is `ready`, otherwise
+        `404 not_found`. Every request mints a new 15-minute link, so a queued
+        event with an expired link is never a dead end. `channels` is stereo:
+        left is the TimelinesAI agent, right is the customer.
+        WhatsApp calling must be enabled for the workspace; otherwise the
+        request returns `403 plan_feature_unavailable`.
+      parameters:
+      - $ref: '#/components/parameters/call_id'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CallRecordingResponse'
+        <<: *http_errors_common
+  /v2/calls/{call_id}/transcript:
+    get:
+      tags:
+      - calls
+      summary: Get one call's transcript as text (v2).
+      description: >
+        `200` only while the call's `transcript_status` is `ready`, otherwise
+        `404 not_found` (including the `skipped_*` states). `text` is inline;
+        `temporary_download_url` is the same text as a `.txt` file, minted fresh
+        (15 minutes) on every request.
+        WhatsApp calling must be enabled for the workspace; otherwise the
+        request returns `403 plan_feature_unavailable`.
+      parameters:
+      - $ref: '#/components/parameters/call_id'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CallTranscriptResponse'
+        <<: *http_errors_common
 components:
   parameters:
     chat_id:
@@ -1763,6 +1911,14 @@ components:
       description: an id of the chat as appears in TimelinesAI (can be found in the
         URL of the chat page, or in the payload of outbound webhook). _Supports sending
         messages to a group._
+    call_id:
+      in: path
+      name: call_id
+      schema:
+        type: integer
+      required: true
+      description: our id of a WhatsApp call, as returned in `CallInfo.id`.
+      example: 81234
     message_uid:
       in: path
       name: message_uid
@@ -2631,7 +2787,15 @@ components:
           type: string
           description: >
             Message body text. `null` for attachment-only messages and for call /
-            event messages.
+            event messages. For a transcribed voice note, `text` carries the
+            transcript and `text_is_transcript` is true — a non-null `text` no
+            longer means the message has no audio.
+        text_is_transcript:
+          type: boolean
+          description: >
+            True when `text` is a voice-note transcript. False for every other
+            message. Omitted while WhatsApp calling is off for the workspace.
+          example: false
         attachment_url:
           example: https://acme.com/logo.png
           type: string
@@ -2742,7 +2906,15 @@ components:
           type: string
           description: >
             Message body text. `null` for attachment-only messages and for call /
-            event messages.
+            event messages. For a transcribed voice note, `text` carries the
+            transcript and `text_is_transcript` is true — a non-null `text` no
+            longer means the message has no audio.
+        text_is_transcript:
+          type: boolean
+          description: >
+            True when `text` is a voice-note transcript. False for every other
+            message. Omitted while WhatsApp calling is off for the workspace.
+          example: false
         attachment_url:
           example: https://acme.com/logo.png
           type: string
@@ -3062,7 +3234,8 @@ components:
 # Quota info
     Quota:
       description: Resource quota with current utilization. Used for seats, messaging
-        quota, and API calls quota.
+        quota, API calls quota, and AI credits (for ai_credits, total is the period
+        grant and used is the period spend).
       type: object
       required:
       - total
@@ -3130,6 +3303,24 @@ components:
           $ref: '#/components/schemas/Quota'
         non_recurring_quota:
           $ref: '#/components/schemas/NonRecurringQuota'
+        ai_credits:
+          description: >
+            AI credits for the current billing period. `total` is the plan's grant
+            for the current billing period. `used` is credits spent from that period
+            grant only, not credits added by support. `period_start` and `period_end`
+            are the current billing period. Remaining = total - used. Spending is
+            paused while the plan is expired or Unpaid; totals are still reported.
+            Absent when WhatsApp calling and AI credits are not enabled for the
+            workspace.
+          allOf:
+          - $ref: '#/components/schemas/Quota'
+        ai_credits_non_recurring:
+          description: >
+            Credits added by support. Spent after the period grant and not reset at
+            period end. `last_updated_at` is not set. Absent when WhatsApp calling
+            and AI credits are not enabled for the workspace.
+          allOf:
+          - $ref: '#/components/schemas/NonRecurringQuota'
     WorkspaceQuotaInfo:
       type: object
       required:
@@ -3378,6 +3569,8 @@ components:
         - waba:template:approved
         - waba:template:rejected
         - waba:template:disabled
+        - call:recording:ready
+        - call:transcript:ready
         - chat:renamed
         - message:deleted
         - message:edited
@@ -3418,6 +3611,8 @@ components:
         - waba_template_approved
         - waba_template_rejected
         - waba_template_disabled
+        - call_recording_ready
+        - call_transcript_ready
         - chat_renamed
         - message_deleted
         - message_edited
@@ -3547,6 +3742,297 @@ components:
           - error
         data:
           $ref: '#/components/schemas/ChatInfo'
+    CallRecordingStatus:
+      type: string
+      description: Recording state of a call. `none` means there is no recording
+        — the call was placed outside TimelinesAI, recording is off, or no audio
+        was captured.
+      enum:
+      - none
+      - processing
+      - ready
+      - failed
+      x-enum-varnames:
+      - NONE
+      - PROCESSING
+      - READY
+      - FAILED
+    CallTranscriptStatus:
+      type: string
+      description: Transcript state of a call. `none` means no transcript was
+        requested. Append-only — new values are added at the end, with their
+        `x-enum-varnames` entry at the same position.
+      enum:
+      - none
+      - processing
+      - ready
+      - skipped_insufficient_credits
+      - skipped_subscription_inactive
+      - failed
+      x-enum-varnames:
+      - NONE
+      - PROCESSING
+      - READY
+      - SKIPPED_INSUFFICIENT_CREDITS
+      - SKIPPED_SUBSCRIPTION_INACTIVE
+      - FAILED
+    CallStatus:
+      type: string
+      description: >
+        Call status in the Public API vocabulary: the stored call result, `no
+        result` becoming `ringing`. In-progress calls stay listed — consumers
+        that want only finished calls skip `ongoing` and `ringing`. Append-only
+        — new values are added at the end, with their `x-enum-varnames` entry
+        at the same position; clients must tolerate values added later. Webhook
+        correspondence: `answered`↔`Answered`, `rejected`↔`Rejected`,
+        `ended`↔`Ended`, `missed`↔`Missed` (incoming) / `No Answer` (outgoing).
+      enum:
+      - answered
+      - rejected
+      - cancelled
+      - accepted_elsewhere
+      - missed
+      - invalid
+      - unavailable
+      - upcoming
+      - failed
+      - abandoned
+      - ongoing
+      - ended
+      - ringing
+      x-enum-varnames:
+      - ANSWERED
+      - REJECTED
+      - CANCELLED
+      - ACCEPTED_ELSEWHERE
+      - MISSED
+      - INVALID
+      - UNAVAILABLE
+      - UPCOMING
+      - FAILED
+      - ABANDONED
+      - ONGOING
+      - ENDED
+      - RINGING
+    CallInfo:
+      type: object
+      required:
+      - id
+      - direction
+      - is_video
+      - status
+      - duration
+      - handled_in_timelines
+      - recording_status
+      - transcript_status
+      properties:
+        id:
+          example: 81234
+          type: integer
+          description: our id of the call; use it with `GET /v2/calls/{call_id}`.
+        chat_id:
+          example: 1000001
+          type: integer
+          description: id of the chat the call belongs to, as on `GET /v2/chats`.
+        whatsapp_account_id:
+          example: 972501111111@s.whatsapp.net
+          type: string
+          nullable: true
+          description: wid of the WhatsApp account the call belongs to; `null`
+            when the chat has no account.
+        message_uid:
+          example: c7ec509d-0171-1ead-a84b-c6943a644768
+          type: string
+          nullable: true
+          description: uid of the call's entry in chat history; `null` when the
+            call has none.
+        direction:
+          example: outgoing
+          type: string
+          enum:
+          - incoming
+          - outgoing
+        is_video:
+          example: false
+          type: boolean
+        status:
+          example: ended
+          $ref: '#/components/schemas/CallStatus'
+        timestamp:
+          example: 2026-10-07 14:03:11 +0300
+          type: string
+          nullable: true
+          description: >
+            Call start time in the workspace timezone, formatted
+            `YYYY-MM-DD HH:MM:SS ±ZZZZ`; the row creation time when the
+            start is unknown. Sorting and the `started_*` filters use this
+            same value.
+        duration:
+          example: 287
+          type: integer
+          description: call duration in seconds.
+        caller_phone:
+          example: '+972501111111'
+          type: string
+          nullable: true
+          description: caller's phone in international format; `null` when unknown.
+        caller_name:
+          example: Kate Smith
+          type: string
+          description: caller name as known to TimelinesAI.
+        recipient_phone:
+          example: '+972540000002'
+          type: string
+          nullable: true
+          description: recipient's phone in international format; `null` when unknown.
+        recipient_name:
+          example: John Doe
+          type: string
+          description: recipient name as known to TimelinesAI.
+        handled_in_timelines:
+          example: true
+          type: boolean
+          description: true when the call was placed in TimelinesAI.
+        recording_status:
+          $ref: '#/components/schemas/CallRecordingStatus'
+        transcript_status:
+          $ref: '#/components/schemas/CallTranscriptStatus'
+    CallInfoList:
+      type: array
+      items:
+        $ref: '#/components/schemas/CallInfo'
+    CallInfoListResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          type: object
+          properties:
+            has_more_pages:
+              type: boolean
+            calls:
+              $ref: '#/components/schemas/CallInfoList'
+    CallInfoResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          $ref: '#/components/schemas/CallInfo'
+    CallRecording:
+      type: object
+      required:
+      - call_id
+      - filename
+      - mimetype
+      - size
+      - duration
+      - channels
+      - temporary_download_url
+      properties:
+        call_id:
+          example: 81234
+          type: integer
+          description: our id of the call, as returned in `CallInfo.id`.
+        filename:
+          example: call-81234.ogg
+          type: string
+          description: recording file name (`call-{call_id}.ogg`).
+        mimetype:
+          example: audio/ogg
+          type: string
+          description: recording MIME type.
+        size:
+          example: 1843200
+          type: integer
+          description: recording file size in bytes.
+        duration:
+          example: 287
+          type: integer
+          description: call duration in seconds.
+        channels:
+          example: 2
+          type: integer
+          description: audio channels; stereo with the TimelinesAI agent on
+            the left and the customer on the right.
+        temporary_download_url:
+          example: https://...
+          type: string
+          description: fresh 15-minute download link, minted on every request.
+    CallRecordingResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          $ref: '#/components/schemas/CallRecording'
+    CallTranscript:
+      type: object
+      required:
+      - call_id
+      - word_count
+      - text
+      - temporary_download_url
+      properties:
+        call_id:
+          example: 81234
+          type: integer
+          description: our id of the call, as returned in `CallInfo.id`.
+        language:
+          example: en
+          type: string
+          nullable: true
+          description: detected transcript language; `null` while the
+            transcription writer stores none.
+        word_count:
+          example: 612
+          type: integer
+          description: number of whitespace-separated words in `text`.
+        text:
+          example: '[00:00] Agent: Hi, this is Kate from Acme...'
+          type: string
+          description: full transcript text, inline.
+        temporary_download_url:
+          example: https://...
+          type: string
+          description: the same text as a `.txt` file; fresh 15-minute link,
+            minted on every request.
+    CallTranscriptResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          $ref: '#/components/schemas/CallTranscript'
     WabaChatListResponse:
       type: object
       required:
