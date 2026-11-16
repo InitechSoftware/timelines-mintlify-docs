@@ -91,6 +91,15 @@
             ]
           },
           {
+            "group": "Calls",
+            "pages": [
+              "public-api-reference/get-the-list-of-calls-in-the-workspace-v2",
+              "public-api-reference/get-one-call-by-id-v2",
+              "public-api-reference/get-a-fresh-download-link-for-one-calls-recording-v2",
+              "public-api-reference/get-one-calls-transcript-as-text-v2"
+            ]
+          },
+          {
             "group": "Reactions",
             "pages": [
               "public-api-reference/get-the-current-reactions-map-for-a-message",
@@ -305,7 +314,9 @@
             "pages": [
               "webhook-reference/calls/triggered-when-an-incoming-whatsapp-call-was-missed",
               "webhook-reference/calls/triggered-when-an-incoming-whatsapp-call-ended",
-              "webhook-reference/calls/triggered-when-an-outgoing-whatsapp-call-ended"
+              "webhook-reference/calls/triggered-when-an-outgoing-whatsapp-call-ended",
+              "webhook-reference/calls/triggered-when-a-call-recording-is-ready-for-download",
+              "webhook-reference/calls/triggered-when-a-call-transcript-is-ready-for-download"
             ]
           }
         ]

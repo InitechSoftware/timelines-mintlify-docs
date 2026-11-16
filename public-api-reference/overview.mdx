@@ -25,6 +25,9 @@ All requests require Bearer token authentication. See [Authentication](/authenti
   <Card title="Chats" icon="comments" href="/public-api-reference/get-full-or-filtered-list-of-all-chats-in-the-workspace">
     List, filter, and update conversations. Assign chats to team members, close/reopen, and manage read status.
   </Card>
+  <Card title="Calls" icon="phone-volume" href="/public-api-reference/get-the-list-of-calls-in-the-workspace-v2">
+    List WhatsApp voice and video calls, and download a recording or transcript when it is ready.
+  </Card>
   <Card title="Files" icon="paperclip" href="/public-api-reference/upload-a-file-using-a-publicly-accessible-url">
     Upload files from URLs or directly. Send images, PDFs, audio, and video as WhatsApp attachments.
   </Card>
@@ -51,6 +54,7 @@ All requests require Bearer token authentication. See [Authentication](/authenti
 | --------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | **Chats**             | `GET /chats`, `GET /chats/{id}`, `PATCH /chats/{id}`                                         | List, get details, and update chats                                              |
 | **Messages**          | `POST /messages`, `POST /chats/{id}/messages`, `GET /chats/{id}/messages`, and more          | Send messages by phone, chat ID, JID, or chat name. Retrieve history and status. |
+| **Calls**             | `GET /v2/calls`, `GET /v2/calls/{call_id}`, `GET /v2/calls/{call_id}/recording`, `GET /v2/calls/{call_id}/transcript` | List calls, and download a recording or transcript when it is ready              |
 | **Reactions**         | `GET /messages/{uid}/reactions`, `PUT /messages/{uid}/reactions`                             | Read and update message reactions                                                |
 | **Files**             | `GET /files`, `POST /files`, `POST /files_upload`, `GET /files/{uid}`, `DELETE /files/{uid}` | Upload, list, download, and delete files                                         |
 | **Labels**            | `GET /chats/{id}/labels`, `PUT /chats/{id}/labels`, `POST /chats/{id}/labels`                | List, add, and replace chat labels                                               |

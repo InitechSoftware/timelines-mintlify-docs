@@ -57,13 +57,15 @@ Track conversation lifecycle and assignment changes.
 
 ### Call events
 
-Receive call history events for WhatsApp voice and video calls. Fired only after the call ends.
+Receive events for WhatsApp voice and video calls. Call history events fire after the call ends. A recording or transcript event fires when that file is ready to download.
 
 | Event | Trigger | Description |
 |-------|---------|-------------|
 | `call:incoming:missed` | Incoming call missed | The recipient never picked up before the caller ended |
 | `call:incoming:ended` | Incoming call ended | Status `Answered` (call was picked up) or `Rejected` (actively declined) |
 | `call:outgoing:ended` | Outgoing call ended | Status `Ended` (completed), `No Answer`, or `Rejected` |
+| `call:recording:ready` | Call recording ready | The recording is ready for download |
+| `call:transcript:ready` | Call transcript ready | The transcript is ready for download |
 
 ### WhatsApp account events
 
