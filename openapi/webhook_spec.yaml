@@ -1159,6 +1159,12 @@ components:
           description: >
             Present (non-null) only for waba:chat:assigned; null/absent for the
             other WABA chat events.
+        message:
+          $ref: '#/components/schemas/WabaMessageInfo'
+          description: >
+            Only for waba:chat:incoming: the message that created the chat, in the
+            same shape as `message` on waba:message:received. Absent for the other
+            WABA chat events.
 
     WabaAccountData:
       type: object
@@ -2018,6 +2024,55 @@ components:
         failure_reason:
           description: Required for `waba:message:failed`; omitted for `waba:message:received`, `waba:message:delivered`, and `waba:message:read`.
           $ref: '#/components/schemas/WabaMessageFailureReason'
+        referral:
+          description: >
+            The Meta click-to-WhatsApp ad or organic post the message came from. Always
+            sent on waba:message:received and on `message` of waba:chat:incoming: `null`
+            when the message carried no referral or the workspace plan does not include ad
+            attribution. Absent on waba:message:delivered, waba:message:read, and
+            waba:message:failed.
+          anyOf:
+            - $ref: '#/components/schemas/WabaMessageReferral'
+            - type: "null"
+
+    WabaMessageReferral:
+      type: object
+      required:
+        - message_uid
+        - source_id
+        - headline
+        - source_url
+        - source_type
+        - timestamp
+      properties:
+        message_uid:
+          type: string
+          description: The `message_uid` of the message that carried the referral.
+          example: c7ec509d-0171-1ead-a84b-c6943a644768
+        source_id:
+          type: string
+          description: Meta ad id (or post id); empty string when Meta does not send one.
+          example: "1234567890"
+        headline:
+          type:
+            - string
+            - "null"
+          description: Ad headline; `null` when Meta does not send one.
+          example: Summer sale
+        source_url:
+          type:
+            - string
+            - "null"
+          description: Link to the ad or post; `null` when Meta does not send one.
+          example: https://fb.me/example
+        source_type:
+          type: string
+          description: '`ad` or `post`, as Meta sends it.'
+          example: ad
+        timestamp:
+          type: string
+          description: Same value and format as the message `timestamp`.
+          example: "2026-06-24 10:15:30 +0000"
 
     WabaTemplateInfo:
       type: object

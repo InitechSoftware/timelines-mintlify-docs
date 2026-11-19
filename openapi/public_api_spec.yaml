@@ -398,6 +398,10 @@ paths:
         current credential. Workspace API keys can reach all workspace WABA
         chats. Member-scoped tokens only return chats on WABA numbers visible
         to that member, plus WABA chats where that member is responsible.
+        Filters are combined with logical AND. `ads_source_id`, `ads_source_after`
+        and `ads_source_before` match the chat's `referrals` and need a plan with
+        ad attribution: on other plans any of them returns `403`
+        `plan_feature_unavailable` instead of the list.
       parameters:
       - in: query
         name: waba_account_id
@@ -428,6 +432,35 @@ paths:
           type: string
         description: filter WABA chats by contact phone number
         example: '+15551230000'
+      - in: query
+        name: ads_source_id
+        schema:
+          type: string
+          minLength: 1
+        description: >
+          filters chats that received a referral from this Meta ad (`source_type`
+          `ad` with this `source_id`), whether it opened the chat or came later.
+          Post referrals never match. With `ads_source_after` / `ads_source_before`,
+          the id and the time are checked on the same referral.
+        example: '120208471234567890'
+      - in: query
+        name: ads_source_after
+        schema:
+          type: string
+        description: >
+          filters chats with an ad referral at or after this time. ISO date or
+          datetime; a value without a UTC offset is read in the workspace timezone,
+          and a date alone means the start of that day.
+        example: '2026-10-01T00:00:00+02:00'
+      - in: query
+        name: ads_source_before
+        schema:
+          type: string
+        description: >
+          filters chats with an ad referral at or before this time. ISO date or
+          datetime; a value without a UTC offset is read in the workspace timezone,
+          and a date alone covers that whole day.
+        example: '2026-10-31'
       - in: query
         name: page
         schema:
@@ -2116,6 +2149,7 @@ components:
       - waba_account_id
       - service_window_is_open
       - service_window_expires_at
+      - referrals
       properties:
         id:
           example: '1000001'
@@ -2224,6 +2258,15 @@ components:
           description: >
             When the current service window closes, in the workspace timezone.
             `null` when the window is closed or unknown.
+        referrals:
+          type: array
+          description: >
+            The Meta click-to-WhatsApp ads and organic posts that reached this chat, one
+            per message that carried a referral, oldest first. The first entry is the one
+            that opened the chat when an ad or a post opened it. Empty when the chat has
+            none and when the workspace plan does not include ad attribution.
+          items:
+            $ref: '#/components/schemas/WabaMessageReferral'
     WabaAccountItem:
       type: object
       required:
@@ -2850,6 +2893,17 @@ components:
             messages (`GET /waba/messages/{message_uid}`); `null`/absent otherwise.
           allOf:
           - $ref: '#/components/schemas/MessageFailureReason'
+        referral:
+          description: >
+            The Meta click-to-WhatsApp ad or organic post the message came from. Returned
+            only by the WABA message calls (`GET /waba/chats/{chat_id}/messages`,
+            `GET /waba/messages/{message_uid}`, `POST /waba/messages`,
+            `POST /waba/chats/{chat_id}/messages`); absent elsewhere. `null` when the
+            message carried no referral, for messages we sent, and when the workspace
+            plan does not include ad attribution.
+          nullable: true
+          allOf:
+          - $ref: '#/components/schemas/WabaMessageReferral'
     MessageSummary:
       type: object
       description: >
@@ -2993,6 +3047,42 @@ components:
           type: string
         details:
           type: string
+    WabaMessageReferral:
+      type: object
+      required:
+      - message_uid
+      - source_id
+      - headline
+      - source_url
+      - source_type
+      - timestamp
+      properties:
+        message_uid:
+          type: string
+          description: The `uid` of the message that carried the referral.
+          example: de919486-0c93-409d-ae66-c2bbb544faca
+        source_id:
+          type: string
+          description: Meta ad id (or post id); empty string when Meta does not send one.
+          example: '120208471234567890'
+        headline:
+          type: string
+          nullable: true
+          description: Ad headline; `null` when Meta does not send one.
+          example: Summer sale
+        source_url:
+          type: string
+          nullable: true
+          description: Link to the ad or post; `null` when Meta does not send one.
+          example: https://fb.me/summer-sale
+        source_type:
+          type: string
+          description: '`ad` or `post`, as Meta sends it.'
+          example: ad
+        timestamp:
+          type: string
+          description: Same value and format as the message `timestamp`.
+          example: 2023-06-18 15:19:23 +0300
     LabelsList:
       type: object
       required:
