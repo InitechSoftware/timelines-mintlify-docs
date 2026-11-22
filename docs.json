@@ -73,7 +73,10 @@
             "pages": [
               "public-api-reference/get-full-or-filtered-list-of-all-chats-in-the-workspace",
               "public-api-reference/get-details-of-a-chat",
-              "public-api-reference/update-chat"
+              "public-api-reference/update-chat",
+              "public-api-reference/delete-a-chat",
+              "public-api-reference/mark-a-chat-as-read",
+              "public-api-reference/show-the-contact-that-you-are-typing"
             ]
           },
           {
@@ -82,6 +85,11 @@
               "public-api-reference/get-filtered-chat-history-messages-only-of-the-chat",
               "public-api-reference/get-the-details-of-a-message-specified-by-the-messages-uid",
               "public-api-reference/get-the-sending-history-of-a-message-specified-by-the-messages-uid",
+              "public-api-reference/search-messages-by-text-across-the-workspace",
+              "public-api-reference/list-the-comments-on-a-message",
+              "public-api-reference/add-a-comment-to-a-message",
+              "public-api-reference/change-the-text-of-a-comment-on-a-message",
+              "public-api-reference/delete-a-comment-on-a-message",
               "public-api-reference/send-message-in-existing-chat",
               "public-api-reference/send-message-to-phone-number",
               "public-api-reference/send-message-to-jid",
@@ -129,7 +137,8 @@
             "pages": [
               "public-api-reference/list-whatsapp-accounts-connected-in-your-timelinesai-workspace",
               "public-api-reference/start-linking-a-whatsapp-number-by-phone-pairing-code",
-              "public-api-reference/read-the-status-of-a-phone-link"
+              "public-api-reference/read-the-status-of-a-phone-link",
+              "public-api-reference/disconnect-a-whatsapp-account"
             ]
           },
           {
@@ -143,7 +152,9 @@
             "pages": [
               "public-api-reference/list-all-teammates-in-the-workspace",
               "public-api-reference/invite-new-teammate-to-the-workspace",
-              "public-api-reference/revoke-a-pending-invitation"
+              "public-api-reference/revoke-a-pending-invitation",
+              "public-api-reference/change-a-teammates-role-and-team",
+              "public-api-reference/remove-a-teammate-from-the-workspace"
             ]
           },
           {
@@ -182,7 +193,11 @@
               "public-api-reference/waba/send-waba-message-in-existing-chat",
               "public-api-reference/waba/send-waba-message-to-phone-number",
               "public-api-reference/waba/get-the-details-of-a-waba-message-specified-by-the-messages-uid",
-              "public-api-reference/waba/get-the-sending-history-of-a-waba-message-specified-by-the-messages-uid"
+              "public-api-reference/waba/get-the-sending-history-of-a-waba-message-specified-by-the-messages-uid",
+              "public-api-reference/waba/list-the-comments-on-a-waba-message",
+              "public-api-reference/waba/add-a-comment-to-a-waba-message",
+              "public-api-reference/waba/change-the-text-of-a-comment-on-a-waba-message",
+              "public-api-reference/waba/delete-a-comment-on-a-waba-message"
             ]
           },
           {

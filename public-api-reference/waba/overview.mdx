@@ -23,7 +23,7 @@ All requests require Bearer token authentication. See [Authentication](/authenti
     List, filter, get, and update WABA chats.
   </Card>
   <Card title="Messages" icon="paper-plane" href="/public-api-reference/waba/send-waba-message-to-phone-number">
-    Send WABA messages by phone number or in an existing chat, and retrieve message details and status history.
+    Send WABA messages by phone number or in an existing chat, retrieve message details and status history, and read or write comments.
   </Card>
   <Card title="Reactions" icon="face-smile" href="/public-api-reference/waba/get-the-current-reaction-for-a-waba-message">
     Get, set, and clear emoji reactions on WABA messages.
@@ -46,6 +46,7 @@ All requests require Bearer token authentication. See [Authentication](/authenti
 | **Chats**    | `GET /waba/chats`, `GET /waba/chats/{chat_id}`, `PATCH /waba/chats/{chat_id}`                                        | List, get details, and update WABA chats             |
 | **Messages** | `POST /waba/messages`, `POST /waba/chats/{chat_id}/messages`, `GET /waba/chats/{chat_id}/messages`, `GET /waba/messages/{message_uid}`, `GET /waba/messages/{message_uid}/status_history` | Send WABA messages and retrieve history and status   |
 | **Reactions**| `GET /waba/messages/{message_uid}/reactions`, `PATCH /waba/messages/{message_uid}/reactions`                         | Read, set, and clear WABA message reactions          |
+| **Comments** | `GET/POST /waba/messages/{message_uid}/comments`, `PATCH/DELETE /waba/messages/{message_uid}/comments/{comment_id}` | List, add, edit, and delete comments on a WABA message |
 | **Labels**   | `GET /waba/chats/{chat_id}/labels`, `POST /waba/chats/{chat_id}/labels`, `PUT /waba/chats/{chat_id}/labels`          | List, replace, and add WABA chat labels              |
 | **Accounts** | `GET /waba/accounts`, `GET /waba/accounts/{account_id}`, `POST /waba/accounts/{account_id}/analytics`, `GET /waba/accounts/{account_id}/analytics/{handle_id}` | List accounts and request/poll account analytics     |
 | **Templates**| `GET /waba/templates`, `GET /waba/templates/{template_id}`                                                           | List and get WABA message templates                  |
