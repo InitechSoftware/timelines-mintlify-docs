@@ -50,9 +50,10 @@ paths:
       summary: Get full or filtered list of all chats in the Workspace.
       description: Leave filtering parameters empty to get the unfiltered list. When
         multiple filtering parameters are specified, logical AND operation is applied.
-        The result is paginated, page size is 50 records. The result is ordered first
-        by the timestamp of the most recent message in a chat (descending), then by
-        the name of the chat (alphabetically, ascending).
+        The result is paginated, the page length is `page_size`, default 50, maximum
+        100. The result is ordered first by the timestamp of the most recent message
+        in a chat (descending), then by the name of the chat (alphabetically,
+        ascending). Chats with no messages come after all chats that have one.
       parameters:
       - in: query
         name: label
@@ -114,13 +115,27 @@ paths:
         description: filter chats where chatgpt auto-response is enabled (true) or
           disabled (false)
       - in: query
+        name: chat_sync
+        schema:
+          type: boolean
+        description: filter chats with Message Sync on (true) or off (false). A chat
+          with `chat_sync` `null` is returned for neither value
+      - in: query
         name: page
         schema:
           type: integer
-        description: specify the page of results (each page contains up to 50 items),
-          starting with 1. Check \"has more page" response value to see if more pages
-          are available.
+        description: specify the page of results (each page contains up to `page_size`
+          items), starting with 1. Check \"has more page" response value to see if more
+          pages are available.
         example: 1
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+        description: Number of items per page. Defaults to 50. Minimum 1. Maximum 100.
+        example: 5
       - in: query
         name: created_after
         schema:
@@ -136,6 +151,26 @@ paths:
           format: date-time
         description: filter chats that were created before this timestamp, can be
           specified with created_after
+        example: '2024-12-31T23:59:59Z'
+      - in: query
+        name: last_message_after
+        schema:
+          type: string
+          format: date-time
+        description: filter chats whose most recent message (including internal
+          notes) is at or after this timestamp, can be specified with last_message_before.
+          Include the timezone offset; a value without one is read in the server
+          timezone. Chats without messages are excluded when this parameter is set.
+        example: '2024-12-31T23:59:59Z'
+      - in: query
+        name: last_message_before
+        schema:
+          type: string
+          format: date-time
+        description: filter chats whose most recent message (including internal
+          notes) is at or before this timestamp, can be specified with last_message_after.
+          Include the timezone offset; a value without one is read in the server
+          timezone. Chats without messages are excluded when this parameter is set.
         example: '2024-12-31T23:59:59Z'
       - in: query
         name: whatsapp_phone
@@ -162,6 +197,33 @@ paths:
               schema:
                 $ref: '#/components/schemas/ChatListResponse'
         <<: *http_errors_common
+        '400':
+          description: '`page_size` is not an integer between 1 and 100, or a date
+            filter (`created_after`, `created_before`, `last_message_after`, `last_message_before`)
+            is not an ISO 8601 timestamp. Every invalid date filter is listed in `errors`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                page_size:
+                  summary: page_size is out of range or not an integer
+                  value:
+                    status: error
+                    message: page_size must be an integer between 1 and 100
+                    error_code: validation_error
+                    errors:
+                    - fields: [page_size]
+                      msg: page_size must be an integer between 1 and 100
+                last_message_date:
+                  summary: last_message_after is not an ISO 8601 timestamp
+                  value:
+                    status: error
+                    message: Validation error
+                    error_code: validation_error
+                    errors:
+                    - fields: [last_message_after]
+                      msg: Invalid isoformat string
   /chats/{chat_id}:
     get:
       summary: Get details of a chat
@@ -178,7 +240,9 @@ paths:
         <<: *http_errors_common
     patch:
       summary: Update chat
-      description: Update chat's name, assign responsible (by email) or close / re-open
+      description: Update chat's name, assign responsible (by email), close / re-open,
+        or turn Message Sync off / on (`chat_sync`). A WABA chat returns `not_supported`;
+        use `PATCH /waba/chats/{chat_id}`.
       parameters:
       - $ref: '#/components/parameters/chat_id'
       requestBody:
@@ -195,6 +259,171 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ChatInfoResponse'
+        <<: *http_errors_common
+    delete:
+      summary: Delete a chat.
+      description: Deletes one chat. `unsync` defaults to `false`. A workspace token may delete any chat in the workspace. A user token may delete a chat only when that member could delete it in the product. A teammate or team supervisor can delete a chat they own. An admin or the owner can delete any chat. An agent or collaborator cannot delete a chat. Assignment to the chat does not allow deleting it.
+      parameters:
+      - $ref: '#/components/parameters/chat_id'
+      - in: query
+        name: unsync
+        required: false
+        schema:
+          type: boolean
+          default: false
+        description: 'Defaults to `false`. `false`: the chat is deleted and will reappear when a new message is received. `true`: the chat is deleted and will not reappear in the system. New messages will not be processed. This does not prevent starting the chat again by sending an outbound message.'
+        example: false
+      responses:
+        <<: *http_errors_common
+        '200':
+          description: Success. The chat is deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleOKResponse'
+              example:
+                status: ok
+                message: Chat deleted
+        '400':
+          description: '`unsync` is not `true` or `false`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: unsync must be true or false
+                error_code: validation_error
+                errors:
+                - fields: [unsync]
+                  msg: unsync must be true or false
+        '403':
+          description: The caller's role does not allow deleting this chat.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: You do not have permission to delete this chat.
+                error_code: permission_denied
+        '404':
+          description: No such chat in this workspace, or the token cannot open it
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: Chat not found.
+                error_code: not_found
+        '405':
+          description: The chat is a WABA chat.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: This is a WABA chat.
+                error_code: not_supported
+  /chats/{chat_id}/read:
+    post:
+      summary: Mark a chat as read.
+      description: |
+        Marks a regular WhatsApp chat as read, as opening the chat in the web app does. The Timelines read flag is the inbox; the WhatsApp read status is what the other person sees. `PATCH /chats/{chat_id}` with `read` changes only the Timelines flag. This endpoint marks the chat read in Timelines and, when the workspace sends read receipts, marks the incoming messages read on WhatsApp the same way opening the chat does. When the workspace does not send read receipts, only the Timelines flag changes. A group chat gets the read receipt opening that chat sends. Calling it on a chat that is already read returns success. The request has no body. Requires the `chats:write` scope.
+
+        **Errors**
+
+        Checks run in this order and the first one that fails is returned. A refused call leaves the chat as it was.
+
+        | Order | `error_code` | HTTP | `message` | When |
+        |---|---|---|---|---|
+        | 1 | `not_found` | 404 | `Chat not found.` | No such chat in this workspace, or the token cannot open it |
+        | 2 | `not_supported` | 405 | `This is a WABA chat. Use the /waba/chats and /waba/messages endpoints instead.` | The chat is a WABA chat |
+        | 3 | `account_inactive` | 409 | `This chat is not connected to a WhatsApp account.` | The chat's WhatsApp account is gone |
+        | 4 | `account_inactive` | 409 | `This WhatsApp account is suspended.` | The account is suspended (Paused or Sync paused on the accounts page) |
+        | 5 | `account_inactive` | 409 | `This WhatsApp account is disconnected.` | The account is disconnected, paused, banned, blocked, needs payment, or in any other inactive state |
+
+        An account that is `active`, `online`, or `offline` is not refused.
+      parameters:
+      - $ref: '#/components/parameters/chat_id'
+      responses:
+        '200':
+          description: Success. `data` is the chat, with `read` true.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatInfoResponse'
+        '405':
+          description: The chat is a WABA chat.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: This is a WABA chat. Use the /waba/chats and /waba/messages endpoints instead.
+                error_code: not_supported
+        '409':
+          description: The chat's WhatsApp account cannot send a read status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: This WhatsApp account is disconnected.
+                error_code: account_inactive
+        <<: *http_errors_common
+  /chats/{chat_id}/typing:
+    post:
+      summary: Show the contact that you are typing.
+      description: |
+        Sends one composing pulse to a regular WhatsApp chat, the same typing indicator the web app sends while a person types. One call sends one pulse. It lasts 8 seconds, then the indicator clears on its own. There is no duration and no way to stop a pulse early. To keep the indicator up, call again after the pulse has cleared. A call made while a pulse is still showing sends nothing: it does not extend that pulse and does not cancel it. The workspace setting for presence signals does not apply to this endpoint. The request has no body. Requires the `chats:write` scope.
+
+        **Errors**
+
+        Checks run in this order and the first one that fails is returned. A refused call sends no pulse.
+
+        | Order | `error_code` | HTTP | `message` | When |
+        |---|---|---|---|---|
+        | 1 | `not_found` | 404 | `Chat not found.` | No such chat in this workspace, or the token cannot open it |
+        | 2 | `not_supported` | 405 | `Typing is not supported in WABA chats.` | The chat is a WABA chat |
+        | 3 | `account_inactive` | 409 | `This chat is not connected to a WhatsApp account.` | The chat's WhatsApp account is gone |
+        | 4 | `account_inactive` | 409 | `This WhatsApp account is suspended.` | The account is suspended (Paused or Sync paused on the accounts page) |
+        | 5 | `account_inactive` | 409 | `This WhatsApp account is disconnected.` | The account is disconnected, paused, banned, blocked, needs payment, or in any other inactive state |
+
+        An account that is `active`, `online`, or `offline` is not refused.
+      parameters:
+      - $ref: '#/components/parameters/chat_id'
+      responses:
+        '200':
+          description: Success. The pulse is sent, or a pulse is already showing in this chat.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusOkResponse'
+        '405':
+          description: The chat is a WABA chat.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: Typing is not supported in WABA chats.
+                error_code: not_supported
+        '409':
+          description: The chat's WhatsApp account cannot send a typing pulse.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: This WhatsApp account is disconnected.
+                error_code: account_inactive
         <<: *http_errors_common
   /chats/{chat_id}/messages:
     get:
@@ -402,6 +631,11 @@ paths:
         and `ads_source_before` match the chat's `referrals` and need a plan with
         ad attribution: on other plans any of them returns `403`
         `plan_feature_unavailable` instead of the list.
+        The result is paginated, the page length is `page_size`, default 50,
+        maximum 100. The result is ordered first by the timestamp of the most
+        recent message in a chat (descending), then by the name of the chat
+        (alphabetically, ascending). Chats with no messages come after all chats
+        that have one.
       parameters:
       - in: query
         name: waba_account_id
@@ -465,10 +699,18 @@ paths:
         name: page
         schema:
           type: integer
-        description: specify the page of results (each page contains up to 50 items),
-          starting with 1. Check "has more page" response value to see if more pages
-          are available.
+        description: specify the page of results (each page contains up to `page_size`
+          items), starting with 1. Check "has more page" response value to see if more
+          pages are available.
         example: 1
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+        description: Number of items per page. Defaults to 50. Minimum 1. Maximum 100.
+        example: 5
       - in: query
         name: with_msg
         schema:
@@ -484,6 +726,19 @@ paths:
               schema:
                 $ref: '#/components/schemas/WabaChatListResponse'
         <<: *http_errors_common
+        '400':
+          description: '`page_size` is not an integer between 1 and 100'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: page_size must be an integer between 1 and 100
+                error_code: validation_error
+                errors:
+                - fields: [page_size]
+                  msg: page_size must be an integer between 1 and 100
   /waba/chats/{chat_id}:
     get:
       summary: Get details of a WABA chat
@@ -872,6 +1127,205 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
         <<: *http_errors_common
+  /waba/messages/{message_uid}/comments:
+    get:
+      summary: List the comments on a WABA message.
+      description: Returns every comment on the message, oldest first. Not paginated. Comments written in the app are included.
+      parameters:
+      - $ref: '#/components/parameters/message_uid'
+      responses:
+        <<: *http_errors_common
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageCommentsListResponse'
+        '404':
+          description: 'No such message in this workspace, or the token cannot open its chat'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: Message not found.
+                error_code: not_found
+        '405':
+          description: 'The message is a regular WhatsApp message. Nothing is changed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: 'This is a regular WhatsApp message. Use /messages/{message_uid}/comments.'
+                error_code: not_supported
+    post:
+      summary: Add a comment to a WABA message.
+      description: Adds a comment that shows on the message in the app. `text` is cleaned the way the app cleans a typed comment. A `br` becomes a new line followed by a space. A plain line break in `text` is removed; send `<br>` to start a new line. A `span` is kept only as a mention, with a numeric `user-id` or an email in `user-email`; its other attributes are dropped. Other tags are removed and their text stays. The text is HTML-escaped, so `&`, `<`, `>` and quotes come back as entities. A bare `http` or `https` URL becomes a link that opens in a new tab. A user token records that user as the author. A workspace token records the workspace owner. Mentions do not send email.
+      parameters:
+      - $ref: '#/components/parameters/message_uid'
+      requestBody:
+        description: A JSON with the comment text.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageCommentRequest'
+      responses:
+        <<: *http_errors_common
+        '200':
+          description: Success. The comment is created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageCommentResponse'
+        '400':
+          description: '`text` is missing or blank'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: text is required
+                error_code: validation_error
+                errors:
+                - fields: [text]
+                  msg: text is required
+        '404':
+          description: 'No such message in this workspace, or the token cannot open its chat'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: Message not found.
+                error_code: not_found
+        '405':
+          description: 'The message is a regular WhatsApp message. Nothing is changed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: 'This is a regular WhatsApp message. Use /messages/{message_uid}/comments.'
+                error_code: not_supported
+  /waba/messages/{message_uid}/comments/{comment_id}:
+    patch:
+      summary: Change the text of a comment on a WABA message.
+      description: Replaces `text`, cleaned the same way as on create. A workspace token may change any comment on a message it can read. A user token may change only a comment whose author is that user.
+      parameters:
+      - $ref: '#/components/parameters/message_uid'
+      - $ref: '#/components/parameters/comment_id'
+      requestBody:
+        description: A JSON with the new comment text.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageCommentRequest'
+      responses:
+        <<: *http_errors_common
+        '200':
+          description: Success. The comment is changed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageCommentResponse'
+        '400':
+          description: '`text` is missing or blank'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: text is required
+                error_code: validation_error
+                errors:
+                - fields: [text]
+                  msg: text is required
+        '403':
+          description: 'A user token whose user is not the author, or a token without `messages:write`. The comment stays'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: You can only change your own comment.
+                error_code: permission_denied
+        '404':
+          description: 'The comment is not on that message. A message that does not exist or that the token cannot open returns `Message not found.` instead'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: Comment not found.
+                error_code: not_found
+        '405':
+          description: 'The message is a regular WhatsApp message. Nothing is changed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: 'This is a regular WhatsApp message. Use /messages/{message_uid}/comments.'
+                error_code: not_supported
+    delete:
+      summary: Delete a comment on a WABA message.
+      description: Deletes one comment. A workspace token may delete any comment on a message it can read. A user token may delete only a comment whose author is that user.
+      parameters:
+      - $ref: '#/components/parameters/message_uid'
+      - $ref: '#/components/parameters/comment_id'
+      responses:
+        <<: *http_errors_common
+        '200':
+          description: Success. The comment is deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleOKResponse'
+              example:
+                status: ok
+                message: Comment deleted
+        '403':
+          description: 'A user token whose user is not the author, or a token without `messages:write`. The comment stays'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: You can only delete your own comment.
+                error_code: permission_denied
+        '404':
+          description: 'The comment is not on that message. A message that does not exist or that the token cannot open returns `Message not found.` instead'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: Comment not found.
+                error_code: not_found
+        '405':
+          description: 'The message is a regular WhatsApp message. Nothing is changed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: 'This is a regular WhatsApp message. Use /messages/{message_uid}/comments.'
+                error_code: not_supported
   /waba/templates:
     get:
       summary: Get the list of all WABA templates in the Workspace.
@@ -1005,6 +1459,205 @@ paths:
                 schema:
                     $ref: '#/components/schemas/ReactionsSetResponse'
           <<: *http_errors_common
+  /messages/{message_uid}/comments:
+    get:
+      summary: List the comments on a message.
+      description: Returns every comment on the message, oldest first. Not paginated. Comments written in the app are included.
+      parameters:
+      - $ref: '#/components/parameters/message_uid'
+      responses:
+        <<: *http_errors_common
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageCommentsListResponse'
+        '404':
+          description: 'No such message in this workspace, or the token cannot open its chat'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: Message not found.
+                error_code: not_found
+        '405':
+          description: 'The message is a WABA message. Nothing is changed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: 'This is a WABA message. Use /waba/messages/{message_uid}/comments.'
+                error_code: not_supported
+    post:
+      summary: Add a comment to a message.
+      description: Adds a comment that shows on the message in the app. `text` is cleaned the way the app cleans a typed comment. A `br` becomes a new line followed by a space. A plain line break in `text` is removed; send `<br>` to start a new line. A `span` is kept only as a mention, with a numeric `user-id` or an email in `user-email`; its other attributes are dropped. Other tags are removed and their text stays. The text is HTML-escaped, so `&`, `<`, `>` and quotes come back as entities. A bare `http` or `https` URL becomes a link that opens in a new tab. A user token records that user as the author. A workspace token records the workspace owner. Mentions do not send email.
+      parameters:
+      - $ref: '#/components/parameters/message_uid'
+      requestBody:
+        description: A JSON with the comment text.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageCommentRequest'
+      responses:
+        <<: *http_errors_common
+        '200':
+          description: Success. The comment is created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageCommentResponse'
+        '400':
+          description: '`text` is missing or blank'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: text is required
+                error_code: validation_error
+                errors:
+                - fields: [text]
+                  msg: text is required
+        '404':
+          description: 'No such message in this workspace, or the token cannot open its chat'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: Message not found.
+                error_code: not_found
+        '405':
+          description: 'The message is a WABA message. Nothing is changed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: 'This is a WABA message. Use /waba/messages/{message_uid}/comments.'
+                error_code: not_supported
+  /messages/{message_uid}/comments/{comment_id}:
+    patch:
+      summary: Change the text of a comment on a message.
+      description: Replaces `text`, cleaned the same way as on create. A workspace token may change any comment on a message it can read. A user token may change only a comment whose author is that user.
+      parameters:
+      - $ref: '#/components/parameters/message_uid'
+      - $ref: '#/components/parameters/comment_id'
+      requestBody:
+        description: A JSON with the new comment text.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageCommentRequest'
+      responses:
+        <<: *http_errors_common
+        '200':
+          description: Success. The comment is changed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageCommentResponse'
+        '400':
+          description: '`text` is missing or blank'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: text is required
+                error_code: validation_error
+                errors:
+                - fields: [text]
+                  msg: text is required
+        '403':
+          description: 'A user token whose user is not the author, or a token without `messages:write`. The comment stays'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: You can only change your own comment.
+                error_code: permission_denied
+        '404':
+          description: 'The comment is not on that message. A message that does not exist or that the token cannot open returns `Message not found.` instead'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: Comment not found.
+                error_code: not_found
+        '405':
+          description: 'The message is a WABA message. Nothing is changed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: 'This is a WABA message. Use /waba/messages/{message_uid}/comments.'
+                error_code: not_supported
+    delete:
+      summary: Delete a comment on a message.
+      description: Deletes one comment. A workspace token may delete any comment on a message it can read. A user token may delete only a comment whose author is that user.
+      parameters:
+      - $ref: '#/components/parameters/message_uid'
+      - $ref: '#/components/parameters/comment_id'
+      responses:
+        <<: *http_errors_common
+        '200':
+          description: Success. The comment is deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleOKResponse'
+              example:
+                status: ok
+                message: Comment deleted
+        '403':
+          description: 'A user token whose user is not the author, or a token without `messages:write`. The comment stays'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: You can only delete your own comment.
+                error_code: permission_denied
+        '404':
+          description: 'The comment is not on that message. A message that does not exist or that the token cannot open returns `Message not found.` instead'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: Comment not found.
+                error_code: not_found
+        '405':
+          description: 'The message is a WABA message. Nothing is changed'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: 'This is a WABA message. Use /waba/messages/{message_uid}/comments.'
+                error_code: not_supported
   /messages:
     post:
       summary: Send message to phone number
@@ -1079,6 +1732,67 @@ paths:
 #                $ref: '#/components/schemas/MessageSendResponse'
 #        <<: *http_errors_common
 
+  /search:
+    get:
+      summary: Search messages by text across the workspace.
+      description: Finds messages whose text or comment contains every word of `text`,
+        the same match as the Messages search in the app. Words match whole; the last
+        word also matches as a prefix, so "dalto ne" finds "Dalto Neto". The sender,
+        the recipient and the chat name are not searched. Only chats available to
+        the token are searched. The result is paginated, page size is 20 messages,
+        ordered from the newest. To get the next page, pass the `uid` of the last
+        message of the previous page as `before_message`.
+      parameters:
+      - in: query
+        name: text
+        required: true
+        schema:
+          type: string
+        description: words to search for. Any characters are accepted; punctuation
+          such as `&`, `|`, `!`, quotes, `:` and `+` is not an error
+        example: dalto ne
+      - in: query
+        name: before_message
+        schema:
+          type: string
+        description: uid of the last message of the previous page, to get the next
+          page (excluding the specified message itself). Omit it or leave it blank
+          for the first page
+        example: d8cc5a02-b676-4956-8710-3ee56330f356
+      responses:
+        '200':
+          description: Success. No match is an empty `messages` list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageSearchResponse'
+        <<: *http_errors_common
+        '400':
+          description: '`text` is missing or blank, or `before_message` is not a message
+            uid'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                text_required:
+                  summary: text is missing or blank
+                  value:
+                    status: error
+                    message: text is required
+                    error_code: validation_error
+                    errors:
+                    - fields: [text]
+                      msg: text is required
+                before_message_invalid:
+                  summary: before_message is not a message uid
+                  value:
+                    status: error
+                    message: before_message is not a message uid
+                    error_code: validation_error
+                    errors:
+                    - fields: [before_message]
+                      msg: before_message is not a message uid
   /files:
     get:
       summary: List files uploaded in your TimelinesAI workspace
@@ -1246,6 +1960,56 @@ paths:
               schema:
                 $ref: '#/components/schemas/PhonePairingResponse'
         <<: *http_errors_common
+  /whatsapp_accounts/{whatsapp_account_id}:
+    delete:
+      summary: Disconnect a WhatsApp account.
+      description: |
+        Disconnects a WhatsApp account, as the Disconnect button in the web app does. The account stays in the workspace, and `GET /whatsapp_accounts` then reports its `status` as `disconnected`; for a connected account that takes a few seconds, while WhatsApp ends the session. A suspended account is disconnected too, and a later seat or plan change does not resume it. An account that is already disconnected is left as it is, and the call returns the same success body. Requires the `accounts:write` scope.
+
+        **Who can disconnect**
+
+        - Legacy workspace token: any account in the workspace.
+        - User-scoped token: the caller's own account if the role can connect WhatsApp accounts (agent and above), an account of a teammate, agent or collaborator on the caller's team if the role can manage team WhatsApp accounts (team supervisor and above), and any account if the role can manage all WhatsApp accounts (admin and owner). Members with no team share the default team. Any other account returns `403` `permission_denied`.
+
+        **Errors**
+
+        | `error_code` | HTTP | `message` | When |
+        |---|---|---|---|
+        | `not_found` | 404 | `WhatsApp account not found.` | No account with this `id` in the workspace |
+        | `permission_denied` | 403 | `You do not have permission to disconnect this WhatsApp account.` | The caller's role does not allow disconnecting this account |
+      parameters:
+      - $ref: '#/components/parameters/whatsapp_account_id'
+      responses:
+        <<: *http_errors_common
+        '200':
+          description: Success. The account is disconnected, or was already disconnected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleOKResponse'
+              example:
+                status: ok
+                message: WhatsApp account disconnected
+        '403':
+          description: The caller's role does not allow disconnecting this account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: You do not have permission to disconnect this WhatsApp account.
+                error_code: permission_denied
+        '404':
+          description: The account is not found in the workspace
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: WhatsApp account not found.
+                error_code: not_found
   /workspace:
     get:
       summary: Workspace info and all current quotas and utilization stats.
@@ -1284,12 +2048,204 @@ paths:
               schema:
                 $ref: '#/components/schemas/WorkspaceTeammatesMeResponse'
         <<: *http_errors_common
+  /workspace/teammates/{user_id}:
+    patch:
+      summary: Change a teammate's role and team.
+      description: Changes the role, the team, or both, of a teammate who has joined
+        the workspace. At least one of `role` and `team_title` is required. Requires
+        `MANAGE_MEMBERS` (admin and owner) when called with a personal token. A caller
+        with a personal token cannot change their own role (403); their own team can
+        still be changed. Nobody else can change the owner's role or team (403). A teammate who has not
+        joined yet is rejected with 400; set the role and team of an invite with POST /workspace/invitations.
+        Returns 404 if the teammate or the team is not found.
+      parameters:
+      - $ref: '#/components/parameters/user_id'
+      requestBody:
+        description: A JSON object with the new role, team, or both.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkspaceTeammateUpdate'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceTeammateInfoResponse'
+        '400':
+          description: Neither `role` nor `team_title` is given, `role` is not one
+            of the allowed roles, or the teammate has not joined the workspace
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                no_fields:
+                  summary: Neither role nor team_title is given
+                  value:
+                    status: error
+                    message: role or team_title is required
+                    error_code: validation_error
+                    errors:
+                    - fields: [role, team_title]
+                      msg: role or team_title is required
+                invalid_role:
+                  summary: role is not one of the allowed roles
+                  value:
+                    status: error
+                    message: role must be one of admin, team_supervisor, teammate, agent, collaborator
+                    error_code: validation_error
+                    errors:
+                    - fields: [role]
+                      msg: role must be one of admin, team_supervisor, teammate, agent, collaborator
+                not_joined:
+                  summary: The teammate has not joined the workspace
+                  value:
+                    status: error
+                    message: This teammate has not joined the workspace.
+                    error_code: validation_error
+        '403':
+          description: The caller is changing their own role, the target is the owner
+            and the caller is someone else, or the personal token's member does not
+            have `MANAGE_MEMBERS`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                own_role:
+                  summary: The caller changes their own role
+                  value:
+                    status: error
+                    message: You cannot change your own role.
+                    error_code: permission_denied
+                owner_role:
+                  summary: Someone else changes the owner's role
+                  value:
+                    status: error
+                    message: The workspace owner's role cannot be changed.
+                    error_code: permission_denied
+                owner_team:
+                  summary: Someone else changes the owner's team
+                  value:
+                    status: error
+                    message: The workspace owner's team cannot be changed.
+                    error_code: permission_denied
+                no_manage_members:
+                  summary: The personal token's member does not have MANAGE_MEMBERS
+                  value:
+                    status: error
+                    message: Permission denied for MANAGE_MEMBERS
+                    error_code: permission_denied
+        '404':
+          description: The teammate or the team is not found in the workspace
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                teammate:
+                  summary: The teammate is not found in the workspace
+                  value:
+                    status: error
+                    message: Teammate not found.
+                    error_code: not_found
+                team:
+                  summary: The team in team_title is not found in the workspace
+                  value:
+                    status: error
+                    message: Team not found.
+                    error_code: not_found
+        <<: *http_errors_common
+    delete:
+      summary: Remove a teammate from the workspace.
+      description: Removes a teammate who has joined the workspace (active or suspended).
+        They lose access to the workspace, and a pending invitation for them is removed
+        too. Requires `MANAGE_MEMBERS` (admin and owner) when called with a personal
+        token. A caller with a personal token cannot remove their own user (403). The
+        owner cannot be removed. A teammate with a connected WhatsApp (QR) account
+        is not removed until that account is disconnected; a disconnected account
+        does not block the removal. A WABA account does not block the removal; it
+        stays in the workspace and is no longer assigned to the teammate. A teammate who has not joined yet is rejected
+        with 400; revoke the invitation with DELETE /workspace/invitations/{user_id}.
+        Returns 404 if the teammate is not found.
+      parameters:
+      - $ref: '#/components/parameters/user_id'
+      responses:
+        <<: *http_errors_common
+        '200':
+          description: Success. The teammate is removed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleOKResponse'
+              example:
+                status: ok
+                message: Teammate removed
+        '400':
+          description: The teammate has not joined the workspace
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: This teammate has not joined the workspace. Revoke the invitation instead.
+                error_code: validation_error
+        '403':
+          description: The caller is removing their own user, the target is the owner,
+            the teammate has a connected WhatsApp account, or the personal token's
+            member does not have `MANAGE_MEMBERS`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                yourself:
+                  summary: The caller removes their own user
+                  value:
+                    status: error
+                    message: You cannot remove yourself.
+                    error_code: permission_denied
+                owner:
+                  summary: The target is the workspace owner
+                  value:
+                    status: error
+                    message: The workspace owner cannot be removed.
+                    error_code: permission_denied
+                connected_whatsapp_account:
+                  summary: The teammate has a connected WhatsApp account
+                  value:
+                    status: error
+                    message: Disconnect the WhatsApp account first and try again.
+                    error_code: permission_denied
+                no_manage_members:
+                  summary: The personal token's member does not have MANAGE_MEMBERS
+                  value:
+                    status: error
+                    message: Permission denied for MANAGE_MEMBERS
+                    error_code: permission_denied
+        '404':
+          description: The teammate is not found in the workspace
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                status: error
+                message: Teammate not found.
+                error_code: not_found
   /workspace/invitations:
     post:
       summary: Invite new teammate to the workspace.
-      description: Sends an invitation to the specified email address. If the user
-        already exists in the workspace, their role and team are updated to match the
-        request. The invitation is auto-approved and the user receives a setup email.
+      description: Sends an invitation to the specified email address. The invitation
+        is auto-approved and the user receives a setup email. If the email belongs
+        to a teammate who has not joined yet, their invitation, role and team are
+        updated to match the request. A teammate who has already joined (active or
+        suspended) is rejected with 409 and is not changed; change their role and
+        team with PATCH /workspace/teammates/{user_id}.
       requestBody:
         description: A JSON object describing the invitation.
         required: true
@@ -1304,6 +2260,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/WorkspaceTeammateInfoResponse'
+        '409':
+          $ref: '#/components/responses/Conflict'
         <<: *http_errors_common
   /workspace/invitations/{user_id}:
     delete:
@@ -1961,6 +2919,14 @@ components:
       description: a UID of a message, that is unique for TimelinesAI workspace. Can
         be used to lookup a message or its sending status.
       example: a5bbb005-37f2-402c-96fa-e479a2e09b02
+    comment_id:
+      in: path
+      name: comment_id
+      schema:
+        type: integer
+      required: true
+      description: an id of a comment on the message, as returned by the comments list.
+      example: 501
     filename:
       in: query
       name: filename
@@ -2039,6 +3005,14 @@ components:
         type: integer
       required: true
       example: 1234
+    whatsapp_account_id:
+      description: The `id` of the WhatsApp account, as returned by GET /whatsapp_accounts.
+      in: path
+      name: whatsapp_account_id
+      schema:
+        type: string
+      required: true
+      example: 972501111111@s.whatsapp.net
   responses:
     OK:
       description: Successful query
@@ -2074,7 +3048,6 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
     Conflict:
       description: Request conflicts with the current state of the target resource
-        (e.g. the target WABA account is not active / not connected, `account_inactive`)
       content:
         application/json:
           schema:
@@ -2110,6 +3083,15 @@ components:
             mirrors the in-app **AI Agent** switch — it clears any "auto-disabled by outgoing
             response" lock and re-arms the agent so it will reply to the next inbound
             message. Setting `false` turns the agent off for this chat.
+        chat_sync:
+          type: boolean
+          example: false
+          description: >
+            Turn Message Sync on (`true`) or off (`false`) for this chat, as the in-app
+            **Message Sync** switch does. While it is off, new incoming WhatsApp messages
+            are not saved to the chat; messages received in that time are not loaded
+            later. Sending a message to the chat turns Message Sync back on.
+            Omit the field to leave Message Sync unchanged.
     WabaChatDetails:
       type: object
       additionalProperties: false
@@ -2661,6 +3643,7 @@ components:
       - read
       - labels
       - chatgpt_autoresponse_enabled
+      - chat_sync
       - whatsapp_account_id
       - chat_url
       - created_timestamp
@@ -2707,6 +3690,14 @@ components:
           type: boolean
           example: true
           description: Whether the AI Agent (ChatGPT autoresponse) is currently enabled for this chat.
+        chat_sync:
+          type: boolean
+          nullable: true
+          example: true
+          description: >
+            Message Sync for this chat, the in-app **Message Sync** switch. `false`: new
+            incoming WhatsApp messages are not saved to the chat. `null`: the chat is not
+            linked to a WhatsApp chat, so it has no Message Sync.
         responsible_email:
           example: kate.smitch@acme.com
           type: string
@@ -3113,6 +4104,109 @@ components:
           type: boolean
           default: true
           description: specify whether to set the note as public or private
+    MessageComment:
+      type: object
+      required:
+      - id
+      - text
+      - created_at
+      - updated_at
+      - user_id
+      - display_name
+      - email
+      properties:
+        id:
+          type: integer
+          description: id of the comment
+          example: 501
+        text:
+          type: string
+          description: comment text as stored. May hold `span` tags and links that open in a new tab
+          example: Called the client
+        created_at:
+          type: string
+          description: when the comment was written, in the workspace timezone
+          example: 2023-06-18 15:19:23 +0300
+        updated_at:
+          type: string
+          description: when the comment text last changed, in the workspace timezone. Equals `created_at` for a comment that was never changed
+          example: 2023-06-18 15:19:23 +0300
+        user_id:
+          type: integer
+          nullable: true
+          description: id of the author. `null` when the author no longer exists
+          example: 42
+        display_name:
+          type: string
+          nullable: true
+          description: author's name, or the email when the name is empty. `null` when the author no longer exists
+          example: John Doe
+        email:
+          type: string
+          nullable: true
+          description: author's email. `null` when the author no longer exists
+          example: john.doe@acme.com
+    MessageCommentRequest:
+      type: object
+      required:
+      - text
+      properties:
+        text:
+          type: string
+          description: comment text. Must not be blank
+          example: Called the client
+    MessageCommentsList:
+      type: object
+      required:
+      - comments
+      properties:
+        comments:
+          type: array
+          description: comments on the message, oldest first
+          example:
+            - id: 501
+              text: Called the client
+              created_at: 2023-06-18 15:19:23 +0300
+              updated_at: 2023-06-18 15:19:23 +0300
+              user_id: 42
+              display_name: John Doe
+              email: john.doe@acme.com
+          items:
+            $ref: '#/components/schemas/MessageComment'
+    MessageCommentsListResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          description: Result status
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          description: comments on the message
+          allOf:
+          - $ref: '#/components/schemas/MessageCommentsList'
+    MessageCommentResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          description: Result status
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          description: the created or changed comment
+          allOf:
+          - $ref: '#/components/schemas/MessageComment'
     MessageID:
       type: object
       required:
@@ -3246,13 +4340,29 @@ components:
           example: Doe
         team_title:
           type: string
-          description: Title of the team to assign the invited user to, default "Default team"
+          description: Title of the team to assign the invited user to, default "Default team".
+            The default team is accepted as "Default" or "Default team".
           example: Sales
         role:
           type: string
           enum: [admin, team_supervisor, teammate, agent, collaborator]
           description: 'Role to assign. One of: collaborator, teammate, admin, agent, team_supervisor. Case-insensitive.'
           example: agent
+    WorkspaceTeammateUpdate:
+      type: object
+      description: At least one of `role` and `team_title` is required.
+      properties:
+        role:
+          type: string
+          enum: [admin, team_supervisor, teammate, agent, collaborator]
+          description: 'New role of the teammate. One of: collaborator, teammate, admin, agent,
+            team_supervisor. Case-insensitive. The owner role cannot be assigned.'
+          example: admin
+        team_title:
+          type: string
+          description: Title of the team to move the teammate to, as returned by GET /workspace/teammates.
+            The default team is accepted as "Default" or "Default team".
+          example: Sales
     WorkspaceTeamsItem:
       type: object
       required:
@@ -3731,6 +4841,18 @@ components:
           enum:
           - ok
           - error
+    StatusOkResponse:
+      required:
+      - status
+      type: object
+      properties:
+        status:
+          type: string
+          description: Result status
+          example: ok
+          enum:
+          - ok
+          - error
     ErrorResponse:
       required:
       - message
@@ -3765,7 +4887,7 @@ components:
             - template_wrong_waba      # 409 — WABA template belongs to a different WABA than the target account
             - template_variables_mismatch # 422 — WABA template variables missing or don't match the template's expected shape
             - service_window_closed    # 409 — WABA free-text/file send attempted outside the open 24h customer service window
-            - not_supported            # 405 — feature unavailable for this WhatsApp account (e.g. WABA-only operation on a QR account)
+            - not_supported            # 405 — operation not supported for this target (e.g. WABA-only operation on a QR account)
             - internal_error           # 500 — unexpected server-side error
             - account_already_connected # 400 — an active QR account in this workspace already uses this phone
             - member_has_connected_account # 400 — this member already has a different connected QR number
@@ -4179,6 +5301,55 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/MessageInfo'
+    MessageSearchData:
+      type: object
+      description: one page of the search result
+      required:
+      - has_more_pages
+      - messages
+      properties:
+        has_more_pages:
+          type: boolean
+          description: true if more matches exist; pass the uid of the last message
+            as `before_message` to get them
+          example: false
+        messages:
+          type: array
+          description: matching messages, newest first, at most 20
+          items:
+            $ref: '#/components/schemas/MessageInfo'
+          example:
+          - uid: d8cc5a02-b676-4956-8710-3ee56330f356
+            chat_id: 12345
+            timestamp: '2024-01-17 10:35:12 +0000'
+            received_timestamp: '2024-01-17 10:35:12 +0000'
+            sender_phone: '+14155552671'
+            sender_name: Paulo Dalto Neto
+            recipient_phone: '+14155550123'
+            recipient_name: John Doe
+            from_me: false
+            text: Contract for Paulo Dalto Neto is ready
+            status: Read
+            origin: WhatsApp
+            has_attachment: false
+            message_type: whatsapp
+            data: {}
+            created_by: ''
+            reactions: {}
+    MessageSearchResponse:
+      type: object
+      required:
+      - status
+      - data
+      properties:
+        status:
+          type: string
+          example: ok
+          enum:
+          - ok
+          - error
+        data:
+          $ref: '#/components/schemas/MessageSearchData'
     MessageInfoResponse:
       type: object
       required:
