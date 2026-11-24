@@ -54,7 +54,7 @@ All requests require Bearer token authentication. See [Authentication](/authenti
 | --------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | **Chats**             | `GET /chats`, `GET /chats/{id}`, `PATCH /chats/{id}`, `DELETE /chats/{id}`, `POST /chats/{id}/read`, `POST /chats/{id}/typing` | List, update, delete, mark read, and show typing |
 | **Messages**          | `POST /messages`, `POST /chats/{id}/messages`, `GET /chats/{id}/messages`, `GET /search`, and more | Send messages, retrieve history, and search message text. |
-| **Calls**             | `GET /v2/calls`, `GET /v2/calls/{call_id}`, `GET /v2/calls/{call_id}/recording`, `GET /v2/calls/{call_id}/transcript` | List calls, and download a recording or transcript when it is ready              |
+| **Calls**             | `GET /calls`, `GET /calls/{call_id}`, `GET /calls/{call_id}/recording`, `GET /calls/{call_id}/transcript` | List calls, and download a recording or transcript when it is ready              |
 | **Reactions**         | `GET /messages/{uid}/reactions`, `PUT /messages/{uid}/reactions`                             | Read and update message reactions                                                |
 | **Comments**          | `GET/POST /messages/{uid}/comments`, `PATCH/DELETE /messages/{uid}/comments/{comment_id}`    | List, add, edit, and delete comments on a message                                |
 | **Files**             | `GET /files`, `POST /files`, `POST /files_upload`, `GET /files/{uid}`, `DELETE /files/{uid}` | Upload, list, download, and delete files                                         |
