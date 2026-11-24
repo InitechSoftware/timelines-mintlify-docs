@@ -1053,7 +1053,7 @@ components:
           type: string
           description: the recording as an `.ogg` file; fresh 15-minute link,
             minted when the event fires — re-mint through
-            GET /v2/calls/{call_id}/recording after expiry.
+            GET /calls/{call_id}/recording after expiry.
           example: https://...
 
     CallTranscriptData:
@@ -1100,7 +1100,7 @@ components:
           type: string
           description: the transcript as a `.txt` file; fresh 15-minute link,
             minted when the event fires — re-mint through
-            GET /v2/calls/{call_id}/transcript after expiry.
+            GET /calls/{call_id}/transcript after expiry.
           example: https://...
 
     ReactionData:
@@ -1707,7 +1707,7 @@ components:
           $ref: '#/components/schemas/PartyInfo'
         call_id:
           type: integer
-          description: Our id for the call, the key for GET /v2/calls/{call_id}. Omitted while WhatsApp calling is off for the workspace.
+          description: Our id for the call, the key for GET /calls/{call_id}. Omitted while WhatsApp calling is off for the workspace.
           example: 81234
         handled_in_timelines:
           type: boolean

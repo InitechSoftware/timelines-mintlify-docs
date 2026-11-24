@@ -2743,11 +2743,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/SimpleSuccessResponse'
         <<: *http_errors_common
-  /v2/calls:
+  /calls:
     get:
       tags:
       - calls
-      summary: Get the list of calls in the Workspace (v2).
+      summary: Get the list of calls in the Workspace.
       description: >
         Calls the caller's own workspace membership has access to — the same
         membership scoping as `GET /v2/chats`: only calls in chats the
@@ -2825,11 +2825,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/CallInfoListResponse'
         <<: *http_errors_common
-  /v2/calls/{call_id}:
+  /calls/{call_id}:
     get:
       tags:
       - calls
-      summary: Get one call by id (v2).
+      summary: Get one call by id.
       description: >
         The call with its recording and transcript status. `404 not_found` when
         the call does not exist, has no chat, or its chat is deleted;
@@ -2847,11 +2847,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/CallInfoResponse'
         <<: *http_errors_common
-  /v2/calls/{call_id}/recording:
+  /calls/{call_id}/recording:
     get:
       tags:
       - calls
-      summary: Get a fresh download link for one call's recording (v2).
+      summary: Get a fresh download link for one call's recording.
       description: >
         `200` only while the call's `recording_status` is `ready`, otherwise
         `404 not_found`. Every request mints a new 15-minute link, so a queued
@@ -2869,11 +2869,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/CallRecordingResponse'
         <<: *http_errors_common
-  /v2/calls/{call_id}/transcript:
+  /calls/{call_id}/transcript:
     get:
       tags:
       - calls
-      summary: Get one call's transcript as text (v2).
+      summary: Get one call's transcript as text.
       description: >
         `200` only while the call's `transcript_status` is `ready`, otherwise
         `404 not_found` (including the `skipped_*` states). `text` is inline;
@@ -5041,7 +5041,7 @@ components:
         id:
           example: 81234
           type: integer
-          description: our id of the call; use it with `GET /v2/calls/{call_id}`.
+          description: our id of the call; use it with `GET /calls/{call_id}`.
         chat_id:
           example: 1000001
           type: integer
